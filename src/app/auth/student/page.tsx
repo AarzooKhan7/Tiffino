@@ -1,10 +1,10 @@
 import AuthCard from "@/components/AuthCard";
-import AuthTabs from "@/components/AuthTabs";
+import AuthPasswordForm from "@/components/AuthPasswordForm";
 
 export default function StudentAuthPage() {
   return (
     <AuthCard title="Student Sign In">
-      <AuthTabs role="student" />
+      <AuthPasswordForm role="student" />
     </AuthCard>
   );
 }

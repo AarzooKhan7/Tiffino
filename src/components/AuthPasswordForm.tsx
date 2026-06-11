@@ -1,51 +1,20 @@
 "use client";
 
-import { useState } from "react";
-import { createClient } from "@/lib/supabase/browser";
+import { useActionState, useState } from "react";
+import { passwordAuth } from "@/app/auth/password-actions";
 import type { Role } from "@/lib/types";
 
 interface Props {
   role: Role;
 }
 
-type Mode = "login" | "signup";
+const INIT = { error: null, needsEmailConfirm: false };
 
 export default function AuthPasswordForm({ role }: Props) {
-  const [mode, setMode]       = useState<Mode>("login");
-  const [email, setEmail]     = useState("");
-  const [password, setPass]   = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState<string | null>(null);
-  const [needsConfirm, setNeedsConfirm] = useState(false);
+  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [state, formAction, pending] = useActionState(passwordAuth, INIT);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    const supabase = createClient();
-
-    if (mode === "signup") {
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) { setError(error.message); setLoading(false); return; }
-
-      // If email confirmation is still ON in Supabase, session will be null
-      if (!data.session) {
-        setNeedsConfirm(true);
-        setLoading(false);
-        return;
-      }
-
-      // Email confirmation is disabled — user is live immediately
-      await upsertProfileAndRedirect(supabase, data.user!.id, data.user!.email ?? email, role);
-    } else {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) { setError(error.message); setLoading(false); return; }
-      await upsertProfileAndRedirect(supabase, data.user.id, data.user.email ?? email, role);
-    }
-  }
-
-  if (needsConfirm) {
+  if (state.needsEmailConfirm) {
     return (
       <div className="text-center py-4 space-y-3">
         <p className="text-2xl">📧</p>
@@ -54,31 +23,34 @@ export default function AuthPasswordForm({ role }: Props) {
           Check your inbox for a confirmation link, then come back and{" "}
           <button
             className="text-[var(--color-brand-secondary)] font-medium hover:underline"
-            onClick={() => { setNeedsConfirm(false); setMode("login"); }}
+            onClick={() => window.location.reload()}
           >
             log in
           </button>
           .
         </p>
         <p className="text-xs text-[var(--color-text-muted)] bg-amber-50 border border-amber-200 rounded-[var(--radius-btn)] px-3 py-2">
-          To skip email confirmation during development: Supabase dashboard →
-          Authentication → Providers → Email → toggle <strong>Confirm email</strong> OFF.
+          To skip email confirmation: Supabase dashboard → Authentication →
+          Providers → Email → toggle <strong>Confirm email</strong> OFF.
         </p>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form action={formAction} className="flex flex-col gap-4">
+      {/* Hidden fields tell the server action which mode and role */}
+      <input type="hidden" name="mode" value={mode} />
+      <input type="hidden" name="role" value={role} />
+
       <div>
         <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
           Email address
         </label>
         <input
           type="email"
+          name="email"
           required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
           className={inputCls}
         />
@@ -90,47 +62,48 @@ export default function AuthPasswordForm({ role }: Props) {
         </label>
         <input
           type="password"
+          name="password"
           required
           minLength={6}
-          value={password}
-          onChange={(e) => setPass(e.target.value)}
           placeholder={mode === "signup" ? "At least 6 characters" : "Your password"}
           className={inputCls}
         />
       </div>
 
-      {error && (
+      {state.error && (
         <p className="text-sm text-[var(--color-brand-primary)] bg-red-50 rounded-[var(--radius-btn)] px-3 py-2">
-          {error}
+          {state.error}
         </p>
       )}
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={pending}
         className="w-full bg-[var(--color-brand-primary)] text-white font-semibold rounded-[var(--radius-btn)] py-2.5 text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
       >
-        {loading
-          ? "Please wait…"
-          : mode === "signup"
-          ? "Create account"
-          : "Log in"}
+        {pending ? "Please wait…" : mode === "signup" ? "Create account" : "Log in"}
       </button>
 
       <p className="text-xs text-center text-[var(--color-text-muted)]">
         {mode === "signup" ? (
           <>
             Already have an account?{" "}
-            <button type="button" onClick={() => { setMode("login"); setError(null); }}
-              className="text-[var(--color-brand-secondary)] font-medium hover:underline">
+            <button
+              type="button"
+              onClick={() => setMode("login")}
+              className="text-[var(--color-brand-secondary)] font-medium hover:underline"
+            >
               Log in
             </button>
           </>
         ) : (
           <>
             No account yet?{" "}
-            <button type="button" onClick={() => { setMode("signup"); setError(null); }}
-              className="text-[var(--color-brand-secondary)] font-medium hover:underline">
+            <button
+              type="button"
+              onClick={() => setMode("signup")}
+              className="text-[var(--color-brand-secondary)] font-medium hover:underline"
+            >
               Create one
             </button>
           </>
@@ -139,14 +112,22 @@ export default function AuthPasswordForm({ role }: Props) {
 
       <p className="text-xs text-center text-[var(--color-text-muted)]">
         {role === "student" ? (
-          <>Mess owner?{" "}
-            <a href="/auth/restaurant" className="text-[var(--color-brand-secondary)] font-medium hover:underline">
+          <>
+            Mess owner?{" "}
+            <a
+              href="/auth/restaurant"
+              className="text-[var(--color-brand-secondary)] font-medium hover:underline"
+            >
               Sign in here
             </a>
           </>
         ) : (
-          <>Student?{" "}
-            <a href="/auth/student" className="text-[var(--color-brand-secondary)] font-medium hover:underline">
+          <>
+            Student?{" "}
+            <a
+              href="/auth/student"
+              className="text-[var(--color-brand-secondary)] font-medium hover:underline"
+            >
               Sign in here
             </a>
           </>
@@ -154,33 +135,6 @@ export default function AuthPasswordForm({ role }: Props) {
       </p>
     </form>
   );
-}
-
-async function upsertProfileAndRedirect(
-  supabase: ReturnType<typeof createClient>,
-  userId: string,
-  email: string,
-  role: Role
-) {
-  const { data: existing } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", userId)
-    .single();
-
-  if (existing) {
-    // Returning user — go straight to their dashboard
-    window.location.href =
-      existing.role === "student" ? "/student/dashboard" : "/restaurant/dashboard";
-    return;
-  }
-
-  // First time — create profile, then onboarding
-  await supabase
-    .from("profiles")
-    .upsert({ id: userId, role, email }, { onConflict: "id" });
-
-  window.location.href = "/onboarding";
 }
 
 const inputCls =
