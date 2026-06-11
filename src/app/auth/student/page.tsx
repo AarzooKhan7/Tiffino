@@ -1,13 +1,10 @@
-import AuthEmailForm from "@/components/AuthEmailForm";
 import AuthCard from "@/components/AuthCard";
+import AuthTabs from "@/components/AuthTabs";
 
 export default function StudentAuthPage() {
   return (
-    <AuthCard
-      title="Student Sign In"
-      subtitle="We'll send a magic link to your email — no password needed."
-    >
-      <AuthEmailForm role="student" />
+    <AuthCard title="Student Sign In">
+      <AuthTabs role="student" />
     </AuthCard>
   );
 }
