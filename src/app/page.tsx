@@ -33,7 +33,7 @@ export default async function HomePage() {
 
       {/* Connection status card */}
       <div
-        className="card-shadow rounded-[var(--radius-card)] bg-[var(--color-surface-card)] px-8 py-6 flex flex-col items-center gap-3"
+        className="card-shadow rounded-[var(--radius-card)] bg-white px-8 py-6 flex flex-col items-center gap-3"
         style={{ minWidth: 320 }}
       >
         {error ? (
@@ -41,7 +41,7 @@ export default async function HomePage() {
             <span className="text-2xl">⚠️</span>
             <p className="font-semibold text-[var(--color-brand-primary)]">Supabase connection failed</p>
             <p className="text-sm text-[var(--color-text-muted)] text-center">{error}</p>
-            <p className="text-xs text-[var(--color-text-muted)]">Fill in .env.local and redeploy.</p>
+            <p className="text-xs text-[var(--color-text-muted)]">Fill in env vars and redeploy.</p>
           </>
         ) : (
           <>
@@ -54,10 +54,21 @@ export default async function HomePage() {
         )}
       </div>
 
-      {/* Phase badge */}
-      <span className="rounded-[var(--radius-pill)] bg-[var(--color-brand-secondary)] px-4 py-1 text-xs font-semibold text-white">
-        Phase 0 — Infrastructure
-      </span>
+      {/* Sign-in buttons */}
+      <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs">
+        <a
+          href="/auth/student"
+          className="flex-1 text-center bg-[var(--color-brand-primary)] text-white font-semibold rounded-[var(--radius-btn)] py-2.5 text-sm hover:opacity-90 transition-opacity"
+        >
+          Student sign in
+        </a>
+        <a
+          href="/auth/restaurant"
+          className="flex-1 text-center bg-[var(--color-brand-secondary)] text-white font-semibold rounded-[var(--radius-btn)] py-2.5 text-sm hover:opacity-90 transition-opacity"
+        >
+          Mess sign in
+        </a>
+      </div>
     </main>
   );
 }
