@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+@theme {
+  /* Tiffino brand palette — warm Zomato/Swiggy-inspired */
+  --color-brand-primary: #e23744;   /* Zomato red */
+  --color-brand-secondary: #fc8019; /* Swiggy orange */
+  --color-brand-accent: #ffd700;    /* warm gold */
+
+  --color-surface: #ffffff;
+  --color-surface-alt: #fff7f0;     /* warm off-white */
+  --color-surface-card: #ffffff;
+
+  --color-text-primary: #1c1c1c;
+  --color-text-secondary: #686b78;
+  --color-text-muted: #93959f;
+
+  --color-border: #e9e9eb;
+
+  /* Typography */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* Radii */
+  --radius-card: 16px;
+  --radius-btn: 8px;
+  --radius-pill: 9999px;
+}
+
+html {
+  background-color: var(--color-surface-alt);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Utility: card shadow matching Zomato style */
+.card-shadow {
+  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.08);
+}
