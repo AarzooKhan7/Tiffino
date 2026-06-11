@@ -38,6 +38,16 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
+  // Dev-only bypass routes — blocked at 404 in production by the handler itself
+  if (process.env.NODE_ENV === "development" && pathname.startsWith("/api/dev")) {
+    return response;
+  }
+
+  // Public restaurant pages
+  if (pathname.startsWith("/restaurants")) {
+    return response;
+  }
+
   // ── Not logged in → redirect to landing ─────────────────────────────────────
   if (!user) {
     return NextResponse.redirect(new URL("/", request.url));
