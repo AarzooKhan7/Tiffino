@@ -1,69 +1,159 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import LogoutButton from "@/components/LogoutButton";
+
+// IST day-of-week: 0=Monday … 6=Sunday
+function todayIST(): number {
+  const istDate = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  );
+  return (istDate.getDay() + 6) % 7;
+}
+
+const DAY_NAMES = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+
+interface DishInfo { name: string; diet_type: string }
+
+function extractDish(raw: unknown): DishInfo | null {
+  if (!raw) return null;
+  // Supabase returns a single object for many-to-one joins
+  const d = Array.isArray(raw) ? raw[0] : raw;
+  if (!d || typeof d !== "object") return null;
+  const obj = d as Record<string, unknown>;
+  return { name: String(obj.name ?? ""), diet_type: String(obj.diet_type ?? "") };
+}
 
 export default async function RestaurantDashboard() {
   const supabase = await createClient();
-
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/restaurant");
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, restaurant_name, area, role")
+    .select("full_name, role")
     .eq("id", user.id)
     .single();
+  if (!profile || profile.role !== "restaurant") redirect("/");
 
-  if (!profile || profile.role !== "restaurant") redirect("/auth/restaurant");
+  const { data: restaurant } = await supabase
+    .from("restaurants")
+    .select("id, name, area, base_price, serves_lunch, serves_dinner")
+    .eq("owner_id", user.id)
+    .single();
+
+  const today = todayIST();
+  const todayName = DAY_NAMES[today];
+
+  const { data: todayMenu } = restaurant
+    ? await supabase
+        .from("weekly_menu")
+        .select("meal_type, dish:dish_id(name, diet_type)")
+        .eq("restaurant_id", restaurant.id)
+        .eq("day_of_week", today)
+    : { data: null };
+
+  const lunchRow  = (todayMenu ?? []).find((r) => r.meal_type === "lunch");
+  const dinnerRow = (todayMenu ?? []).find((r) => r.meal_type === "dinner");
+  const lunchDish  = extractDish(lunchRow?.dish);
+  const dinnerDish = extractDish(dinnerRow?.dish);
 
   return (
-    <main className="min-h-screen bg-[var(--color-surface-alt)] p-6">
-      {/* Top bar */}
-      <header className="max-w-2xl mx-auto flex items-center justify-between mb-8">
-        <span className="text-2xl font-extrabold text-[var(--color-brand-primary)]">Tiffino</span>
-        <LogoutButton />
-      </header>
-
-      <div className="max-w-2xl mx-auto space-y-4">
-        {/* Greeting card */}
-        <div className="card-shadow rounded-[var(--radius-card)] bg-white px-6 py-5">
-          <p className="text-sm text-[var(--color-text-muted)] mb-1">Welcome back,</p>
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">
-            {profile.full_name ?? user.email}
-          </h1>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <span className="rounded-[var(--radius-pill)] bg-[var(--color-brand-secondary)] text-white text-xs font-semibold px-3 py-1">
-              Restaurant
+    <div className="space-y-4">
+      {/* Greeting */}
+      <div className="card-shadow rounded-[var(--radius-card)] bg-white px-6 py-5">
+        <p className="text-sm text-[var(--color-text-muted)]">Welcome back,</p>
+        <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mt-0.5">
+          {profile.full_name ?? user.email}
+        </h1>
+        {restaurant && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            <span className="rounded-full bg-[var(--color-brand-secondary)] text-white text-xs font-semibold px-3 py-1">
+              🍽 {restaurant.name}
             </span>
-            {profile.restaurant_name && (
-              <span className="rounded-[var(--radius-pill)] bg-[var(--color-surface-alt)] text-[var(--color-text-secondary)] text-xs px-3 py-1 border border-[var(--color-border)]">
-                🍽 {profile.restaurant_name}
-              </span>
-            )}
-            {profile.area && (
-              <span className="rounded-[var(--radius-pill)] bg-[var(--color-surface-alt)] text-[var(--color-text-secondary)] text-xs px-3 py-1 border border-[var(--color-border)]">
-                📍 {profile.area}
-              </span>
+            <span className="rounded-full bg-[var(--color-surface-alt)] text-[var(--color-text-secondary)] text-xs px-3 py-1 border border-[var(--color-border)]">
+              📍 {restaurant.area}
+            </span>
+            <span className="rounded-full bg-[var(--color-surface-alt)] text-[var(--color-text-secondary)] text-xs px-3 py-1 border border-[var(--color-border)]">
+              ₹{restaurant.base_price}/slot
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Setup CTA */}
+      {!restaurant && (
+        <div className="card-shadow rounded-[var(--radius-card)] bg-white px-6 py-8 text-center">
+          <p className="text-lg font-semibold text-[var(--color-text-primary)] mb-2">
+            Complete your restaurant setup
+          </p>
+          <p className="text-sm text-[var(--color-text-muted)] mb-4">
+            Add your restaurant details so students can find and subscribe to you.
+          </p>
+          <Link href="/restaurant/setup"
+            className="inline-block bg-[var(--color-brand-primary)] text-white font-semibold text-sm px-6 py-2.5 rounded-[var(--radius-btn)] hover:opacity-90">
+            Set up restaurant →
+          </Link>
+        </div>
+      )}
+
+      {restaurant && (
+        <>
+          {/* Today's menu */}
+          <div className="card-shadow rounded-[var(--radius-card)] bg-white px-6 py-5">
+            <h2 className="font-semibold text-[var(--color-text-primary)] mb-3">
+              Today&apos;s Menu — {todayName}
+            </h2>
+            {(!lunchDish && !dinnerDish) ? (
+              <p className="text-sm text-[var(--color-text-muted)]">
+                No menu set for today.{" "}
+                <Link href="/restaurant/menu" className="text-[var(--color-brand-secondary)] hover:underline font-medium">
+                  Build your weekly menu →
+                </Link>
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {restaurant.serves_lunch  && <MealCard slot="Lunch"  dish={lunchDish} />}
+                {restaurant.serves_dinner && <MealCard slot="Dinner" dish={dinnerDish} />}
+              </div>
             )}
           </div>
-        </div>
 
-        {/* Placeholder sections */}
-        <div className="card-shadow rounded-[var(--radius-card)] bg-white px-6 py-5">
-          <h2 className="font-semibold text-[var(--color-text-primary)] mb-2">Weekly Menu</h2>
-          <p className="text-sm text-[var(--color-text-muted)]">Phase 2 — coming soon.</p>
-        </div>
+          {/* Quick links */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {[
+              { href: "/restaurant/menu",   emoji: "📅", label: "Edit Weekly Menu" },
+              { href: "/restaurant/dishes", emoji: "🍲", label: "Manage Dishes" },
+              { href: "/restaurant/setup",  emoji: "⚙️", label: "Restaurant Settings" },
+            ].map(({ href, emoji, label }) => (
+              <Link key={href} href={href}
+                className="card-shadow rounded-[var(--radius-card)] bg-white px-4 py-4 flex flex-col gap-1 hover:shadow-md transition-shadow">
+                <span className="text-2xl">{emoji}</span>
+                <span className="text-sm font-medium text-[var(--color-text-primary)]">{label}</span>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
-        <div className="card-shadow rounded-[var(--radius-card)] bg-white px-6 py-5">
-          <h2 className="font-semibold text-[var(--color-text-primary)] mb-2">Active Subscriptions</h2>
-          <p className="text-sm text-[var(--color-text-muted)]">Phase 2 — coming soon.</p>
+function MealCard({ slot, dish }: { slot: string; dish: DishInfo | null }) {
+  return (
+    <div className="rounded-[var(--radius-btn)] border border-[var(--color-border)] px-4 py-3">
+      <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wide mb-1">{slot}</p>
+      {dish ? (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-medium text-sm text-[var(--color-text-primary)]">{dish.name}</span>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+            dish.diet_type === "veg"    ? "bg-green-100 text-green-700"  :
+            dish.diet_type === "nonveg" ? "bg-red-100 text-red-700"      :
+                                          "bg-orange-100 text-orange-700"
+          }`}>{dish.diet_type}</span>
         </div>
-
-        <div className="card-shadow rounded-[var(--radius-card)] bg-white px-6 py-5">
-          <h2 className="font-semibold text-[var(--color-text-primary)] mb-2">QR Code</h2>
-          <p className="text-sm text-[var(--color-text-muted)]">Phase 2 — coming soon.</p>
-        </div>
-      </div>
-    </main>
+      ) : (
+        <p className="text-sm text-[var(--color-text-muted)]">Not set</p>
+      )}
+    </div>
   );
 }
