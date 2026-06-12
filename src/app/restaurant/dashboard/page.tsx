@@ -2,12 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-// IST day-of-week: 0=Monday … 6=Sunday
 function todayIST(): number {
-  const istDate = new Date(
-    new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
-  );
-  return (istDate.getDay() + 6) % 7;
+  return (new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })).getDay() + 6) % 7;
 }
 
 const DAY_NAMES = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
@@ -27,21 +23,15 @@ export default async function RestaurantDashboard() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/restaurant");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("name, role")
-    .eq("id", user.id)
-    .single();
+  // Parallel: profile + restaurant in one round trip
+  const [{ data: profile }, { data: restaurant }] = await Promise.all([
+    supabase.from("profiles").select("name, role").eq("id", user.id).single(),
+    supabase.from("restaurants").select("id, name, area, base_price, serves_lunch, serves_dinner").eq("owner_id", user.id).single(),
+  ]);
+
   if (!profile || profile.role !== "restaurant") redirect("/");
 
-  const { data: restaurant } = await supabase
-    .from("restaurants")
-    .select("id, name, area, base_price, serves_lunch, serves_dinner")
-    .eq("owner_id", user.id)
-    .single();
-
-  const today    = todayIST();
-  const todayName = DAY_NAMES[today];
+  const today = todayIST();
 
   const { data: todayMenu } = restaurant
     ? await supabase
@@ -58,11 +48,10 @@ export default async function RestaurantDashboard() {
 
   return (
     <div className="space-y-4">
-      {/* Greeting */}
       <div className="card-shadow rounded-[var(--radius-card)] bg-white px-6 py-5">
         <p className="text-sm text-[var(--color-text-muted)]">Welcome back,</p>
         <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mt-0.5">
-          {profile.name ?? user.email}
+          {profile.name ?? "Restaurant Owner"}
         </h1>
         {restaurant && (
           <div className="mt-2 flex flex-wrap gap-2">
@@ -79,17 +68,12 @@ export default async function RestaurantDashboard() {
         )}
       </div>
 
-      {/* Setup CTA — shown if registration somehow missed creating the restaurants row */}
       {!restaurant && (
         <div className="card-shadow rounded-[var(--radius-card)] bg-white px-6 py-8 text-center">
-          <p className="text-lg font-semibold text-[var(--color-text-primary)] mb-2">
-            Complete your restaurant setup
-          </p>
-          <p className="text-sm text-[var(--color-text-muted)] mb-4">
-            Add your restaurant details so students can find and subscribe to you.
-          </p>
+          <p className="text-lg font-semibold text-[var(--color-text-primary)] mb-2">Complete your restaurant setup</p>
+          <p className="text-sm text-[var(--color-text-muted)] mb-4">Add your details so students can find and subscribe to you.</p>
           <Link href="/restaurant/setup"
-            className="inline-block bg-[var(--color-brand-primary)] text-white font-semibold text-sm px-6 py-2.5 rounded-[var(--radius-btn)] hover:opacity-90">
+            className="inline-block bg-[var(--color-brand-primary)] text-white font-semibold text-sm px-6 py-2.5 rounded-[var(--radius-btn)] hover:opacity-90 transition-opacity">
             Set up restaurant →
           </Link>
         </div>
@@ -97,10 +81,9 @@ export default async function RestaurantDashboard() {
 
       {restaurant && (
         <>
-          {/* Today's menu */}
           <div className="card-shadow rounded-[var(--radius-card)] bg-white px-6 py-5">
             <h2 className="font-semibold text-[var(--color-text-primary)] mb-3">
-              Today&apos;s Menu — {todayName}
+              Today&apos;s Menu — {DAY_NAMES[today]}
             </h2>
             {(!lunchDish && !dinnerDish) ? (
               <p className="text-sm text-[var(--color-text-muted)]">
@@ -117,7 +100,6 @@ export default async function RestaurantDashboard() {
             )}
           </div>
 
-          {/* Quick links */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[
               { href: "/restaurant/menu",   emoji: "📅", label: "Edit Weekly Menu" },
