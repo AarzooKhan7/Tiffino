@@ -1,10 +1,10 @@
 import AuthCard from "@/components/AuthCard";
-import AuthPasswordForm from "@/components/AuthPasswordForm";
+import LoginForm from "@/components/LoginForm";
 
-export default function RestaurantAuthPage() {
+export default function RestaurantLoginPage() {
   return (
     <AuthCard title="Mess / Restaurant Sign In">
-      <AuthPasswordForm role="restaurant" />
+      <LoginForm role="restaurant" />
     </AuthCard>
   );
 }

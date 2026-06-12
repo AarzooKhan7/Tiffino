@@ -1,10 +1,10 @@
 import AuthCard from "@/components/AuthCard";
-import AuthPasswordForm from "@/components/AuthPasswordForm";
+import LoginForm from "@/components/LoginForm";
 
-export default function StudentAuthPage() {
+export default function StudentLoginPage() {
   return (
     <AuthCard title="Student Sign In">
-      <AuthPasswordForm role="student" />
+      <LoginForm role="student" />
     </AuthCard>
   );
 }

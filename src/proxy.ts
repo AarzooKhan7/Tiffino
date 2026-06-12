@@ -25,35 +25,33 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // Refresh the session — MUST be called before any getUser()
+  // Refresh the session — must happen before any getUser()
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
 
-  // ── Public routes — always allowed ──────────────────────────────────────────
-  const publicPaths = ["/", "/auth/student", "/auth/restaurant", "/auth/callback"];
-  if (publicPaths.some((p) => pathname === p || pathname.startsWith(p + "?"))) {
+  // ── Always-public: landing, all auth pages & handlers, public restaurant browsing ──
+  if (
+    pathname === "/" ||
+    pathname.startsWith("/auth/") ||
+    pathname.startsWith("/restaurants")
+  ) {
     return response;
   }
 
-  // Dev-only bypass routes — blocked at 404 in production by the handler itself
+  // Dev-only bypass — blocked at 404 in production by the handler itself
   if (process.env.NODE_ENV === "development" && pathname.startsWith("/api/dev")) {
     return response;
   }
 
-  // Public restaurant pages
-  if (pathname.startsWith("/restaurants")) {
-    return response;
-  }
-
-  // ── Not logged in → redirect to landing ─────────────────────────────────────
+  // ── Not logged in → landing ───────────────────────────────────────────────────
   if (!user) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  // ── Fetch role from profiles ─────────────────────────────────────────────────
+  // ── Fetch role ────────────────────────────────────────────────────────────────
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
@@ -62,7 +60,7 @@ export async function proxy(request: NextRequest) {
 
   const role = profile?.role as "student" | "restaurant" | undefined;
 
-  // No profile yet → onboarding (avoid redirect loop)
+  // No profile yet → onboarding
   if (!role) {
     if (!pathname.startsWith("/onboarding")) {
       return NextResponse.redirect(new URL("/onboarding", request.url));
@@ -70,14 +68,14 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  // ── Onboarding already done → skip it ────────────────────────────────────────
+  // Onboarding already done → skip it
   if (pathname.startsWith("/onboarding")) {
     return NextResponse.redirect(
       new URL(role === "student" ? "/student/dashboard" : "/restaurant/dashboard", request.url)
     );
   }
 
-  // ── Cross-role access guard ──────────────────────────────────────────────────
+  // ── Cross-role guard ──────────────────────────────────────────────────────────
   if (pathname.startsWith("/student") && role !== "student") {
     return NextResponse.redirect(new URL("/restaurant/dashboard", request.url));
   }

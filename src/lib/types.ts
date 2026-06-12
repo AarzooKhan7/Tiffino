@@ -3,8 +3,9 @@ export type Role = "student" | "restaurant";
 export interface Profile {
   id: string;
   role: Role;
-  full_name: string | null;
+  username: string | null;
   email: string | null;
+  full_name: string | null;
   // student fields
   location: string | null;
   diet_preference: string | null;
