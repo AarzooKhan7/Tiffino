@@ -59,62 +59,71 @@ export default function SubscribePanel({
   }
 
   return (
-    <div className="mt-4 rounded-[var(--radius-card)] bg-white border border-[var(--color-border)] card-shadow px-5 py-5">
-      <h2 className="font-semibold text-[var(--color-text-primary)] mb-3">Subscribe to {restaurantName}</h2>
+    <div className="rounded-[var(--radius-card)] bg-white card-shadow px-5 py-5">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center text-base">🍱</div>
+        <div>
+          <h2 className="font-bold text-[var(--color-text-primary)] text-sm">Subscribe to {restaurantName}</h2>
+          <p className="text-xs text-[var(--color-text-muted)]">30-day plan · tokens credited instantly</p>
+        </div>
+      </div>
 
-      <p className="text-xs text-[var(--color-text-muted)] mb-3">Choose your meal slots for a 30-day plan:</p>
-
+      <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide mb-2">Select slots</p>
       <div className="flex gap-3 mb-4">
         {servesLunch && (
-          <button
-            type="button"
-            onClick={() => toggle("lunch")}
-            className={`flex-1 rounded-[var(--radius-btn)] border px-4 py-3 text-sm font-medium transition-all ${
+          <button type="button" onClick={() => toggle("lunch")}
+            className={`flex-1 rounded-xl border-2 px-4 py-3 text-sm font-semibold transition-all active:scale-95 ${
               selected.includes("lunch")
-                ? "bg-[var(--color-brand-primary)] text-white border-[var(--color-brand-primary)]"
-                : "bg-white text-[var(--color-text-secondary)] border-[var(--color-border)] hover:border-[var(--color-brand-primary)]"
+                ? "bg-orange-50 border-[var(--color-brand-secondary)] text-[var(--color-brand-secondary)]"
+                : "bg-white border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-brand-secondary)]"
             }`}>
-            🌞 Lunch<br />
-            <span className="text-xs font-normal opacity-80">₹{basePrice}/day</span>
+            <div className="text-xl mb-1">🌞</div>
+            Lunch
+            <div className="text-xs font-normal opacity-70 mt-0.5">₹{basePrice}/day</div>
           </button>
         )}
         {servesDinner && (
-          <button
-            type="button"
-            onClick={() => toggle("dinner")}
-            className={`flex-1 rounded-[var(--radius-btn)] border px-4 py-3 text-sm font-medium transition-all ${
+          <button type="button" onClick={() => toggle("dinner")}
+            className={`flex-1 rounded-xl border-2 px-4 py-3 text-sm font-semibold transition-all active:scale-95 ${
               selected.includes("dinner")
-                ? "bg-[var(--color-brand-primary)] text-white border-[var(--color-brand-primary)]"
-                : "bg-white text-[var(--color-text-secondary)] border-[var(--color-border)] hover:border-[var(--color-brand-primary)]"
+                ? "bg-indigo-50 border-indigo-400 text-indigo-600"
+                : "bg-white border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-indigo-400"
             }`}>
-            🌙 Dinner<br />
-            <span className="text-xs font-normal opacity-80">₹{basePrice}/day</span>
+            <div className="text-xl mb-1">🌙</div>
+            Dinner
+            <div className="text-xs font-normal opacity-70 mt-0.5">₹{basePrice}/day</div>
           </button>
         )}
       </div>
 
       {selected.length > 0 && (
-        <div className="rounded-[var(--radius-btn)] bg-[var(--color-surface-alt)] px-4 py-3 mb-4 flex items-center justify-between text-sm">
-          <span className="text-[var(--color-text-secondary)]">
-            {selected.map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(" + ")} · 30 days
-          </span>
-          <span className="font-bold text-[var(--color-text-primary)]">₹{pricePerMonth.toLocaleString()}</span>
+        <div className="rounded-xl bg-[var(--color-surface-alt)] border border-[var(--color-border)] px-4 py-3 mb-4 flex items-center justify-between">
+          <div>
+            <p className="text-xs text-[var(--color-text-muted)]">30 days · {selected.map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(" + ")}</p>
+            <p className="text-xs text-[var(--color-text-muted)]">{30 * selected.length} meal tokens</p>
+          </div>
+          <span className="text-xl font-extrabold text-[var(--color-text-primary)]">₹{pricePerMonth.toLocaleString()}</span>
         </div>
       )}
 
-      {error && (
-        <p className="text-xs text-red-600 mb-3">{error}</p>
-      )}
+      {error && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg mb-3">{error}</p>}
 
-      <button
-        type="button"
-        onClick={handleSubscribe}
-        disabled={isPending || selected.length === 0}
-        className="w-full bg-[var(--color-brand-primary)] text-white font-semibold text-sm py-3 rounded-[var(--radius-btn)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity">
-        {isPending ? "Processing…" : `Pay ₹${pricePerMonth.toLocaleString()} (Demo)`}
+      <button type="button" onClick={handleSubscribe} disabled={isPending || selected.length === 0}
+        className="btn-primary w-full py-3.5 text-sm rounded-xl">
+        {isPending ? (
+          <span className="flex items-center gap-2 justify-center">
+            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            Processing…
+          </span>
+        ) : `Pay ₹${pricePerMonth.toLocaleString()} (Demo)`}
       </button>
 
-      <p className="text-xs text-center text-[var(--color-text-muted)] mt-2">Demo mode — no real payment</p>
+      <p className="text-[11px] text-center text-[var(--color-text-muted)] mt-2.5 flex items-center justify-center gap-1">
+        <span>🔒</span> Demo mode — no real payment is charged
+      </p>
     </div>
   );
 }

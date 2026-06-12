@@ -1,38 +1,149 @@
 @import "tailwindcss";
 
 @theme {
-  /* Tiffino brand palette — warm Zomato/Swiggy-inspired */
-  --color-brand-primary: #e23744;   /* Zomato red */
-  --color-brand-secondary: #fc8019; /* Swiggy orange */
-  --color-brand-accent: #ffd700;    /* warm gold */
+  /* ── Brand palette — warm Zomato / Swiggy inspired ─────────── */
+  --color-brand-primary:   #e23744;  /* Zomato red */
+  --color-brand-secondary: #fc8019;  /* Swiggy orange */
+  --color-brand-accent:    #ffd700;  /* gold highlight */
 
-  --color-surface: #ffffff;
-  --color-surface-alt: #fff7f0;     /* warm off-white */
+  /* ── Surfaces ───────────────────────────────────────────────── */
+  --color-surface:     #ffffff;
+  --color-surface-alt: #faf5f0;      /* warm off-white, like parchment */
   --color-surface-card: #ffffff;
 
-  --color-text-primary: #1c1c1c;
+  /* ── Text ───────────────────────────────────────────────────── */
+  --color-text-primary:   #1c1c1c;
   --color-text-secondary: #686b78;
-  --color-text-muted: #93959f;
+  --color-text-muted:     #93959f;
 
+  /* ── Border ─────────────────────────────────────────────────── */
   --color-border: #e9e9eb;
 
-  /* Typography */
+  /* ── Typography ─────────────────────────────────────────────── */
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 
-  /* Radii */
+  /* ── Radii ───────────────────────────────────────────────────── */
   --radius-card: 16px;
-  --radius-btn: 8px;
+  --radius-btn:  8px;
   --radius-pill: 9999px;
 }
 
+/* ── Base ───────────────────────────────────────────────────────── */
 html {
   background-color: var(--color-surface-alt);
   color: var(--color-text-primary);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
 }
 
-/* Utility: card shadow matching Zomato style */
-.card-shadow {
-  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.08);
+/* ── Shadow system ──────────────────────────────────────────────── */
+.card-shadow-sm { box-shadow: 0 1px 4px 0 rgba(0,0,0,0.06); }
+.card-shadow    { box-shadow: 0 2px 8px 0 rgba(0,0,0,0.09); }
+.card-shadow-lg { box-shadow: 0 4px 20px 0 rgba(0,0,0,0.12); }
+
+/* ── Image cover helper ─────────────────────────────────────────── */
+.img-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ── Gradient overlay on image containers ───────────────────────── */
+.img-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.0) 55%);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* ── Diet dot system ────────────────────────────────────────────── */
+.diet-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border-width: 1.5px;
+  flex-shrink: 0;
+}
+.diet-dot-veg    { background: #0f8a25; border-color: #0f8a25; }
+.diet-dot-nonveg { background: #e23744; border-color: #e23744; }
+.diet-dot-mix    { background: #fc8019; border-color: #fc8019; }
+
+/* ── Bottom nav safe area ───────────────────────────────────────── */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* ── Input base ─────────────────────────────────────────────────── */
+.input-base {
+  width: 100%;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  background: #fff;
+  color: var(--color-text-primary);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  outline: none;
+}
+.input-base:focus {
+  border-color: var(--color-brand-primary);
+  box-shadow: 0 0 0 3px rgba(226,55,68,0.12);
+}
+
+/* ── Button system ──────────────────────────────────────────────── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-brand-primary);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 0.65rem 1.5rem;
+  border-radius: var(--radius-btn);
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  user-select: none;
+}
+.btn-primary:hover  { opacity: 0.9; }
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-brand-secondary);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 0.65rem 1.5rem;
+  border-radius: var(--radius-btn);
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btn-secondary:hover { opacity: 0.9; }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  font-size: 0.875rem;
+  padding: 0.65rem 1.25rem;
+  border-radius: var(--radius-btn);
+  border: 1.5px solid var(--color-border);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-ghost:hover {
+  background: var(--color-surface-alt);
+  border-color: #ccc;
 }

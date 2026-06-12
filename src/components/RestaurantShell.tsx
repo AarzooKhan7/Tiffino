@@ -2,12 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import LogoutButton from "./LogoutButton";
-
 const NAV = [
   { href: "/restaurant/dashboard", label: "Dashboard" },
   { href: "/restaurant/dishes",    label: "Dishes" },
-  { href: "/restaurant/menu",      label: "Weekly Menu" },
+  { href: "/restaurant/menu",      label: "Menu" },
   { href: "/restaurant/setup",     label: "Settings" },
 ];
 
@@ -21,7 +19,7 @@ export default function RestaurantShell({ fullName, children }: Props) {
 
   return (
     <div className="min-h-screen bg-[var(--color-surface-alt)]">
-      <header className="bg-white border-b border-[var(--color-border)] sticky top-0 z-10">
+      <header className="bg-white border-b border-[var(--color-border)] sticky top-0 z-40 card-shadow-sm">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
           <Link
             href="/restaurant/dashboard"
@@ -50,7 +48,9 @@ export default function RestaurantShell({ fullName, children }: Props) {
             <span className="hidden sm:block text-sm text-[var(--color-text-secondary)] truncate max-w-[120px]">
               {fullName ?? "Restaurant"}
             </span>
-            <LogoutButton />
+            <form method="POST" action="/auth/logout">
+              <button type="submit" className="btn-ghost text-xs px-3 py-1.5">Sign out</button>
+            </form>
           </div>
         </div>
       </header>

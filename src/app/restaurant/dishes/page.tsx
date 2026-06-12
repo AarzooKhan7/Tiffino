@@ -2,14 +2,18 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { upsertDish, deleteDish } from "./actions";
 
+const DIET_DOT: Record<string, string> = {
+  veg:    "diet-dot diet-dot-veg",
+  nonveg: "diet-dot diet-dot-nonveg",
+  mix:    "diet-dot diet-dot-mix",
+};
 const DIET_BADGE: Record<string, string> = {
-  veg:    "bg-green-100 text-green-700",
-  nonveg: "bg-red-100   text-red-700",
-  mix:    "bg-orange-100 text-orange-700",
+  veg:    "bg-green-50 text-green-700 border-green-200",
+  nonveg: "bg-red-50 text-red-700 border-red-200",
+  mix:    "bg-orange-50 text-orange-700 border-orange-200",
 };
 
-const inputCls =
-  "w-full border border-[var(--color-border)] rounded-[var(--radius-btn)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]";
+const inputCls = "input-base";
 
 export default async function DishesPage({
   searchParams,
@@ -121,8 +125,9 @@ export default async function DishesPage({
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`${DIET_DOT[dish.diet_type] ?? "diet-dot"}`} />
                   <span className="font-medium text-sm text-[var(--color-text-primary)]">{dish.name}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${DIET_BADGE[dish.diet_type] ?? ""}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium border ${DIET_BADGE[dish.diet_type] ?? ""}`}>
                     {dish.diet_type}
                   </span>
                 </div>
