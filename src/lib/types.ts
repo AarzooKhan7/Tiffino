@@ -4,14 +4,25 @@ export interface Profile {
   id: string;
   role: Role;
   username: string | null;
+  name: string | null;
   email: string | null;
-  full_name: string | null;
-  // student fields
+  phone: string | null;
   location: string | null;
-  diet_preference: string | null;
-  // restaurant fields
-  restaurant_name: string | null;
-  area: string | null;
+  diet_pref: string | null;   // 'veg' | 'nonveg' | 'mix'
   created_at: string;
-  updated_at: string;
+}
+
+export interface Restaurant {
+  id: string;
+  owner_id: string;
+  name: string;
+  address: string | null;
+  area: string | null;
+  base_price: number;
+  serves_lunch: boolean;
+  serves_dinner: boolean;
+  lunch_skip_cutoff: string | null;
+  dinner_skip_cutoff: string | null;
+  qr_token: string | null;
+  created_at: string;
 }

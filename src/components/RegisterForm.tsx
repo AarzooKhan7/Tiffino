@@ -5,14 +5,19 @@ import type { Role } from "@/lib/types";
 
 interface Props { role: Role }
 
-const DIET_OPTIONS = ["Vegetarian", "Non-Vegetarian", "Vegan", "Jain"];
+// Display label → exact DB value (diet_pref: 'veg' | 'nonveg' | 'mix')
+const DIET_OPTIONS = [
+  { label: "Vegetarian",       value: "veg"    },
+  { label: "Non-Vegetarian",   value: "nonveg" },
+  { label: "Mix / No preference", value: "mix" },
+];
 
 export default function RegisterForm({ role }: Props) {
   const [username,       setUsername]       = useState("");
   const [password,       setPassword]       = useState("");
-  const [fullName,       setFullName]       = useState("");
+  const [name,           setName]           = useState("");
   const [location,       setLocation]       = useState("");
-  const [diet,           setDiet]           = useState("");
+  const [dietPref,       setDietPref]       = useState("");
   const [restaurantName, setRestaurantName] = useState("");
   const [area,           setArea]           = useState("");
   const [loading,        setLoading]        = useState(false);
@@ -28,9 +33,9 @@ export default function RegisterForm({ role }: Props) {
       body.append("username",        username);
       body.append("password",        password);
       body.append("role",            role);
-      body.append("full_name",       fullName);
+      body.append("name",            name);
       body.append("location",        location);
-      body.append("diet_preference", diet);
+      body.append("diet_pref",       dietPref);
       body.append("restaurant_name", restaurantName);
       body.append("area",            area);
 
@@ -55,15 +60,13 @@ export default function RegisterForm({ role }: Props) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
-      {/* ── Common fields ─────────────────────────────────── */}
+      {/* ── Username + password ───────────────────────────── */}
       <div>
         <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
           Username <span className="text-[var(--color-brand-primary)]">*</span>
         </label>
         <input
-          type="text"
-          required
-          autoComplete="username"
+          type="text" required autoComplete="username"
           value={username}
           onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
           placeholder="e.g. aryan_shah"
@@ -80,32 +83,27 @@ export default function RegisterForm({ role }: Props) {
           Password <span className="text-[var(--color-brand-primary)]">*</span>
         </label>
         <input
-          type="password"
-          required
-          minLength={6}
-          autoComplete="new-password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
+          type="password" required minLength={6} autoComplete="new-password"
+          value={password} onChange={e => setPassword(e.target.value)}
           placeholder="At least 6 characters"
           className={inputCls}
         />
       </div>
 
+      {/* ── Shared: full name ─────────────────────────────── */}
       <div>
         <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
           Full name <span className="text-[var(--color-brand-primary)]">*</span>
         </label>
         <input
-          type="text"
-          required
-          value={fullName}
-          onChange={e => setFullName(e.target.value)}
+          type="text" required
+          value={name} onChange={e => setName(e.target.value)}
           placeholder={role === "student" ? "Aryan Shah" : "Ramesh Patel"}
           className={inputCls}
         />
       </div>
 
-      {/* ── Student-only fields ───────────────────────────── */}
+      {/* ── Student-only ──────────────────────────────────── */}
       {role === "student" && (
         <>
           <div>
@@ -113,10 +111,8 @@ export default function RegisterForm({ role }: Props) {
               Location / Area <span className="text-[var(--color-brand-primary)]">*</span>
             </label>
             <input
-              type="text"
-              required
-              value={location}
-              onChange={e => setLocation(e.target.value)}
+              type="text" required
+              value={location} onChange={e => setLocation(e.target.value)}
               placeholder="Koregaon Park, Pune"
               className={inputCls}
             />
@@ -127,18 +123,19 @@ export default function RegisterForm({ role }: Props) {
               Diet preference
             </label>
             <select
-              value={diet}
-              onChange={e => setDiet(e.target.value)}
+              value={dietPref} onChange={e => setDietPref(e.target.value)}
               className={inputCls + " bg-white"}
             >
               <option value="">Prefer not to say</option>
-              {DIET_OPTIONS.map(d => <option key={d} value={d}>{d}</option>)}
+              {DIET_OPTIONS.map(({ label, value }) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
             </select>
           </div>
         </>
       )}
 
-      {/* ── Restaurant-only fields ────────────────────────── */}
+      {/* ── Restaurant-only ───────────────────────────────── */}
       {role === "restaurant" && (
         <>
           <div>
@@ -146,10 +143,8 @@ export default function RegisterForm({ role }: Props) {
               Mess / restaurant name <span className="text-[var(--color-brand-primary)]">*</span>
             </label>
             <input
-              type="text"
-              required
-              value={restaurantName}
-              onChange={e => setRestaurantName(e.target.value)}
+              type="text" required
+              value={restaurantName} onChange={e => setRestaurantName(e.target.value)}
               placeholder="Shree Krishna Mess"
               className={inputCls}
             />
@@ -160,10 +155,8 @@ export default function RegisterForm({ role }: Props) {
               Area / locality <span className="text-[var(--color-brand-primary)]">*</span>
             </label>
             <input
-              type="text"
-              required
-              value={area}
-              onChange={e => setArea(e.target.value)}
+              type="text" required
+              value={area} onChange={e => setArea(e.target.value)}
               placeholder="Kothrud, Pune"
               className={inputCls}
             />
@@ -178,8 +171,7 @@ export default function RegisterForm({ role }: Props) {
       )}
 
       <button
-        type="submit"
-        disabled={loading}
+        type="submit" disabled={loading}
         className="w-full bg-[var(--color-brand-primary)] text-white font-semibold rounded-[var(--radius-btn)] py-2.5 text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
       >
         {loading ? "Creating account…" : "Create account"}

@@ -3,7 +3,11 @@
 import { useActionState } from "react";
 import { completeStudentOnboarding } from "@/app/onboarding/actions";
 
-const DIET_OPTIONS = ["Vegetarian", "Non-Vegetarian", "Vegan", "Jain"];
+const DIET_OPTIONS = [
+  { label: "Vegetarian",          value: "veg"    },
+  { label: "Non-Vegetarian",      value: "nonveg" },
+  { label: "Mix / No preference", value: "mix"    },
+];
 
 export default function StudentOnboardingForm() {
   const [error, action, pending] = useActionState<string | null, FormData>(
@@ -25,10 +29,10 @@ export default function StudentOnboardingForm() {
           Full name <span className="text-[var(--color-brand-primary)]">*</span>
         </label>
         <input
-          name="full_name"
+          name="name"
           required
           placeholder="Aryan Shah"
-          className="w-full border border-[var(--color-border)] rounded-[var(--radius-btn)] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+          className={inputCls}
         />
       </div>
 
@@ -40,7 +44,7 @@ export default function StudentOnboardingForm() {
           name="location"
           required
           placeholder="Koregaon Park, Pune"
-          className="w-full border border-[var(--color-border)] rounded-[var(--radius-btn)] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+          className={inputCls}
         />
       </div>
 
@@ -48,13 +52,10 @@ export default function StudentOnboardingForm() {
         <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
           Diet preference
         </label>
-        <select
-          name="diet_preference"
-          className="w-full border border-[var(--color-border)] rounded-[var(--radius-btn)] px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
-        >
+        <select name="diet_pref" className={inputCls + " bg-white"}>
           <option value="">Prefer not to say</option>
-          {DIET_OPTIONS.map((d) => (
-            <option key={d} value={d}>{d}</option>
+          {DIET_OPTIONS.map(({ label, value }) => (
+            <option key={value} value={value}>{label}</option>
           ))}
         </select>
       </div>
@@ -75,3 +76,6 @@ export default function StudentOnboardingForm() {
     </form>
   );
 }
+
+const inputCls =
+  "w-full border border-[var(--color-border)] rounded-[var(--radius-btn)] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]";

@@ -22,36 +22,21 @@ export default function RestaurantOnboardingForm() {
         <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
           Your name <span className="text-[var(--color-brand-primary)]">*</span>
         </label>
-        <input
-          name="full_name"
-          required
-          placeholder="Ramesh Patel"
-          className="w-full border border-[var(--color-border)] rounded-[var(--radius-btn)] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
-        />
+        <input name="name" required placeholder="Ramesh Patel" className={inputCls} />
       </div>
 
       <div>
         <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
           Mess / restaurant name <span className="text-[var(--color-brand-primary)]">*</span>
         </label>
-        <input
-          name="restaurant_name"
-          required
-          placeholder="Shree Krishna Mess"
-          className="w-full border border-[var(--color-border)] rounded-[var(--radius-btn)] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
-        />
+        <input name="restaurant_name" required placeholder="Shree Krishna Mess" className={inputCls} />
       </div>
 
       <div>
         <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
           Area / locality <span className="text-[var(--color-brand-primary)]">*</span>
         </label>
-        <input
-          name="area"
-          required
-          placeholder="Kothrud, Pune"
-          className="w-full border border-[var(--color-border)] rounded-[var(--radius-btn)] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
-        />
+        <input name="area" required placeholder="Kothrud, Pune" className={inputCls} />
       </div>
 
       {error && (
@@ -70,3 +55,6 @@ export default function RestaurantOnboardingForm() {
     </form>
   );
 }
+
+const inputCls =
+  "w-full border border-[var(--color-border)] rounded-[var(--radius-btn)] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]";

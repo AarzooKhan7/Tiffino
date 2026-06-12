@@ -12,17 +12,17 @@ export default async function OnboardingPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, full_name, location, diet_preference, restaurant_name, area")
+    .select("role, name, location")
     .eq("id", user.id)
     .single();
 
   if (!profile) redirect("/");
 
-  // If both name fields are filled, onboarding is done
+  // If profile is already filled, skip onboarding
   const isDone =
     profile.role === "student"
-      ? profile.full_name && profile.location
-      : profile.full_name && profile.restaurant_name && profile.area;
+      ? !!(profile.name && profile.location)
+      : !!profile.name;
 
   if (isDone) {
     redirect(profile.role === "student" ? "/student/dashboard" : "/restaurant/dashboard");

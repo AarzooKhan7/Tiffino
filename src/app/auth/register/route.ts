@@ -13,12 +13,16 @@ export async function POST(request: NextRequest) {
   const password = String(body.get("password") ?? "");
   const role     = String(body.get("role")     ?? "student") as Role;
 
-  const full_name       = String(body.get("full_name")       ?? "").trim();
-  const location        = String(body.get("location")        ?? "").trim() || null;
-  const diet_preference = String(body.get("diet_preference") ?? "").trim() || null;
+  // Profile fields (shared)
+  const name      = String(body.get("name")      ?? "").trim();
+  const location  = String(body.get("location")  ?? "").trim() || null;
+  const diet_pref = String(body.get("diet_pref") ?? "").trim() || null;
+
+  // Restaurant-only fields (go into restaurants table, NOT profiles)
   const restaurant_name = String(body.get("restaurant_name") ?? "").trim() || null;
   const area            = String(body.get("area")            ?? "").trim() || null;
 
+  // ── Validation ──────────────────────────────────────────────────────────────
   if (!USERNAME_RE.test(username)) {
     return NextResponse.json(
       { error: "Username must be 3–20 characters: lowercase letters, numbers, underscores only." },
@@ -28,14 +32,14 @@ export async function POST(request: NextRequest) {
   if (password.length < 6) {
     return NextResponse.json({ error: "Password must be at least 6 characters." }, { status: 400 });
   }
-  if (!full_name) {
+  if (!name) {
     return NextResponse.json({ error: "Full name is required." }, { status: 400 });
   }
   if (role === "restaurant" && !restaurant_name) {
     return NextResponse.json({ error: "Mess / restaurant name is required." }, { status: 400 });
   }
 
-  // Check username uniqueness via service role (bypasses RLS)
+  // ── Check username uniqueness via service role (bypasses RLS) ───────────────
   const service = createServiceClient();
   const { data: taken } = await service
     .from("profiles")
@@ -44,9 +48,13 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (taken) {
-    return NextResponse.json({ error: "Username is already taken. Please choose another." }, { status: 409 });
+    return NextResponse.json(
+      { error: "Username is already taken. Please choose another." },
+      { status: 409 }
+    );
   }
 
+  // ── Create auth user ─────────────────────────────────────────────────────────
   const email          = `${username}@tiffino.local`;
   const pendingCookies: CookieEntry[] = [];
 
@@ -82,18 +90,34 @@ export async function POST(request: NextRequest) {
 
   const userId = authData.user!.id;
 
-  // Create the full profile in one shot via service role
+  // ── Create profile (only real columns: id, username, email, role, name, location, diet_pref) ──
   const { error: profileError } = await service.from("profiles").upsert(
-    { id: userId, username, email, role, full_name, location, diet_preference, restaurant_name, area },
+    { id: userId, username, email, role, name, location, diet_pref },
     { onConflict: "id" }
   );
-
   if (profileError) {
     return NextResponse.json({ error: profileError.message }, { status: 500 });
   }
 
+  // ── For restaurant role: also create a restaurants row ──────────────────────
+  if (role === "restaurant") {
+    const { error: restError } = await service.from("restaurants").insert({
+      owner_id:      userId,
+      name:          restaurant_name!,
+      area:          area ?? "",
+      base_price:    0,
+      serves_lunch:  true,
+      serves_dinner: true,
+    });
+    if (restError) {
+      return NextResponse.json({ error: restError.message }, { status: 500 });
+    }
+  }
+
   const dest = role === "student" ? "/student/dashboard" : "/restaurant/dashboard";
 
+  // Attach session cookies to the JSON response — browser stores them before
+  // window.location.href fires, so the next request carries the session.
   const res = NextResponse.json({ redirect: dest });
   pendingCookies.forEach(({ name, value, options }) =>
     res.cookies.set(name, value, options as Parameters<typeof res.cookies.set>[2])

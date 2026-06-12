@@ -9,11 +9,11 @@ export default async function RestaurantLayout({ children }: { children: React.R
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, role")
+    .select("name, role")
     .eq("id", user.id)
     .single();
 
   if (!profile || profile.role !== "restaurant") redirect("/");
 
-  return <RestaurantShell fullName={profile.full_name}>{children}</RestaurantShell>;
+  return <RestaurantShell fullName={profile.name}>{children}</RestaurantShell>;
 }

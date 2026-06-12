@@ -10,7 +10,7 @@ export default async function StudentDashboard() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, location, diet_preference, role")
+    .select("name, location, diet_pref, role")
     .eq("id", user.id)
     .single();
 
@@ -29,20 +29,20 @@ export default async function StudentDashboard() {
         <div className="card-shadow rounded-[var(--radius-card)] bg-white px-6 py-5">
           <p className="text-sm text-[var(--color-text-muted)] mb-1">Welcome back,</p>
           <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">
-            {profile.full_name ?? user.email}
+            {profile.name ?? user.email}
           </h1>
           <div className="mt-3 flex flex-wrap gap-2">
-            <span className="rounded-[var(--radius-pill)] bg-[var(--color-brand-primary)] text-white text-xs font-semibold px-3 py-1">
+            <span className="rounded-full bg-[var(--color-brand-primary)] text-white text-xs font-semibold px-3 py-1">
               Student
             </span>
             {profile.location && (
-              <span className="rounded-[var(--radius-pill)] bg-[var(--color-surface-alt)] text-[var(--color-text-secondary)] text-xs px-3 py-1 border border-[var(--color-border)]">
+              <span className="rounded-full bg-[var(--color-surface-alt)] text-[var(--color-text-secondary)] text-xs px-3 py-1 border border-[var(--color-border)]">
                 📍 {profile.location}
               </span>
             )}
-            {profile.diet_preference && (
-              <span className="rounded-[var(--radius-pill)] bg-[var(--color-surface-alt)] text-[var(--color-text-secondary)] text-xs px-3 py-1 border border-[var(--color-border)]">
-                🥗 {profile.diet_preference}
+            {profile.diet_pref && (
+              <span className="rounded-full bg-[var(--color-surface-alt)] text-[var(--color-text-secondary)] text-xs px-3 py-1 border border-[var(--color-border)]">
+                🥗 {profile.diet_pref}
               </span>
             )}
           </div>
@@ -51,12 +51,12 @@ export default async function StudentDashboard() {
         {/* Placeholder sections */}
         <div className="card-shadow rounded-[var(--radius-card)] bg-white px-6 py-5">
           <h2 className="font-semibold text-[var(--color-text-primary)] mb-2">My Subscription</h2>
-          <p className="text-sm text-[var(--color-text-muted)]">Phase 2 — coming soon.</p>
+          <p className="text-sm text-[var(--color-text-muted)]">Phase 3 — coming soon.</p>
         </div>
 
         <div className="card-shadow rounded-[var(--radius-card)] bg-white px-6 py-5">
           <h2 className="font-semibold text-[var(--color-text-primary)] mb-2">This Week&apos;s Menu</h2>
-          <p className="text-sm text-[var(--color-text-muted)]">Phase 2 — coming soon.</p>
+          <p className="text-sm text-[var(--color-text-muted)]">Phase 3 — coming soon.</p>
         </div>
       </div>
     </main>

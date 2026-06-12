@@ -7,16 +7,16 @@ export default async function RestaurantSetupPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/restaurant");
 
-  // Pre-fill from existing restaurants row OR from profile
-  const [{ data: restaurant }, { data: profile }] = await Promise.all([
-    supabase.from("restaurants").select("*").eq("owner_id", user.id).single(),
-    supabase.from("profiles").select("restaurant_name, area").eq("id", user.id).single(),
-  ]);
+  const { data: restaurant } = await supabase
+    .from("restaurants")
+    .select("*")
+    .eq("owner_id", user.id)
+    .single();
 
   const prefill = {
-    name:               restaurant?.name               ?? profile?.restaurant_name ?? "",
+    name:               restaurant?.name               ?? "",
     address:            restaurant?.address            ?? "",
-    area:               restaurant?.area               ?? profile?.area            ?? "",
+    area:               restaurant?.area               ?? "",
     base_price:         restaurant?.base_price         ?? "",
     serves_lunch:       restaurant?.serves_lunch       ?? true,
     serves_dinner:      restaurant?.serves_dinner      ?? true,
@@ -36,32 +36,27 @@ export default async function RestaurantSetupPage() {
       </p>
 
       <form action={upsertRestaurant} className="card-shadow rounded-[var(--radius-card)] bg-white p-6 flex flex-col gap-4">
-        {/* Name */}
         <Field label="Restaurant / mess name *">
           <input name="name" required defaultValue={prefill.name} placeholder="Shree Krishna Mess"
             className={inputCls} />
         </Field>
 
-        {/* Address */}
         <Field label="Address">
           <input name="address" defaultValue={prefill.address} placeholder="123, MG Road"
             className={inputCls} />
         </Field>
 
-        {/* Area */}
         <Field label="Area / locality *">
           <input name="area" required defaultValue={prefill.area} placeholder="Kothrud, Pune"
             className={inputCls} />
         </Field>
 
-        {/* Base price */}
         <Field label="Base price per slot (₹) *">
           <input name="base_price" type="number" min="0" step="0.01" required
             defaultValue={prefill.base_price} placeholder="60"
             className={inputCls} />
         </Field>
 
-        {/* Serves */}
         <div>
           <p className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
             Meal slots offered
@@ -80,13 +75,12 @@ export default async function RestaurantSetupPage() {
           </div>
         </div>
 
-        {/* Cutoff times */}
         <div className="grid grid-cols-2 gap-4">
           <Field label="Lunch skip cutoff">
             <input name="lunch_skip_cutoff" type="time" defaultValue={prefill.lunch_skip_cutoff}
               className={inputCls} />
             <p className="text-xs text-[var(--color-text-muted)] mt-1">
-              Students can't skip after this time (IST)
+              Students can&apos;t skip after this time (IST)
             </p>
           </Field>
           <Field label="Dinner skip cutoff">

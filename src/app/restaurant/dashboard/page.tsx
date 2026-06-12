@@ -16,7 +16,6 @@ interface DishInfo { name: string; diet_type: string }
 
 function extractDish(raw: unknown): DishInfo | null {
   if (!raw) return null;
-  // Supabase returns a single object for many-to-one joins
   const d = Array.isArray(raw) ? raw[0] : raw;
   if (!d || typeof d !== "object") return null;
   const obj = d as Record<string, unknown>;
@@ -30,7 +29,7 @@ export default async function RestaurantDashboard() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, role")
+    .select("name, role")
     .eq("id", user.id)
     .single();
   if (!profile || profile.role !== "restaurant") redirect("/");
@@ -41,7 +40,7 @@ export default async function RestaurantDashboard() {
     .eq("owner_id", user.id)
     .single();
 
-  const today = todayIST();
+  const today    = todayIST();
   const todayName = DAY_NAMES[today];
 
   const { data: todayMenu } = restaurant
@@ -52,8 +51,8 @@ export default async function RestaurantDashboard() {
         .eq("day_of_week", today)
     : { data: null };
 
-  const lunchRow  = (todayMenu ?? []).find((r) => r.meal_type === "lunch");
-  const dinnerRow = (todayMenu ?? []).find((r) => r.meal_type === "dinner");
+  const lunchRow   = (todayMenu ?? []).find((r) => r.meal_type === "lunch");
+  const dinnerRow  = (todayMenu ?? []).find((r) => r.meal_type === "dinner");
   const lunchDish  = extractDish(lunchRow?.dish);
   const dinnerDish = extractDish(dinnerRow?.dish);
 
@@ -63,7 +62,7 @@ export default async function RestaurantDashboard() {
       <div className="card-shadow rounded-[var(--radius-card)] bg-white px-6 py-5">
         <p className="text-sm text-[var(--color-text-muted)]">Welcome back,</p>
         <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mt-0.5">
-          {profile.full_name ?? user.email}
+          {profile.name ?? user.email}
         </h1>
         {restaurant && (
           <div className="mt-2 flex flex-wrap gap-2">
@@ -80,7 +79,7 @@ export default async function RestaurantDashboard() {
         )}
       </div>
 
-      {/* Setup CTA */}
+      {/* Setup CTA — shown if registration somehow missed creating the restaurants row */}
       {!restaurant && (
         <div className="card-shadow rounded-[var(--radius-card)] bg-white px-6 py-8 text-center">
           <p className="text-lg font-semibold text-[var(--color-text-primary)] mb-2">
