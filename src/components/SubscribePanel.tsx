@@ -2,13 +2,15 @@
 
 import { useState, useTransition } from "react";
 import { createSubscription } from "@/app/subscriptions/actions";
-import { PRICE_ONE_SLOT, PRICE_BOTH_SLOTS, calcPlanPrice } from "@/lib/payment";
+import { calcPlanPrice } from "@/lib/payment";
 
 interface Props {
   restaurantId: string;
   restaurantName: string;
   servesLunch: boolean;
   servesDinner: boolean;
+  lunchPrice: number;
+  dinnerPrice: number;
 }
 
 export default function SubscribePanel({
@@ -16,6 +18,8 @@ export default function SubscribePanel({
   restaurantName,
   servesLunch,
   servesDinner,
+  lunchPrice,
+  dinnerPrice,
 }: Props) {
   const [selected, setSelected] = useState<string[]>(() => {
     if (servesLunch && servesDinner) return ["lunch", "dinner"];
@@ -31,8 +35,8 @@ export default function SubscribePanel({
       prev.includes(slot) ? prev.filter((s) => s !== slot) : [...prev, slot]
     );
 
-  const price    = calcPlanPrice(selected);
-  const tokens   = 30 * selected.length;
+  const price  = calcPlanPrice(selected, lunchPrice, dinnerPrice);
+  const tokens = 30 * selected.length;
 
   const handleSubscribe = () => {
     if (selected.length === 0) { setError("Select at least one slot"); return; }
@@ -85,7 +89,7 @@ export default function SubscribePanel({
             <div className="text-xl mb-1">🌞</div>
             <div className="font-bold">Lunch</div>
             <div className="text-xs font-semibold mt-0.5">
-              ₹{PRICE_ONE_SLOT.toLocaleString()}<span className="font-normal opacity-60">/month</span>
+              ₹{lunchPrice.toLocaleString()}<span className="font-normal opacity-60">/month</span>
             </div>
             <div className="text-[10px] opacity-60 mt-0.5">30 tokens</div>
           </button>
@@ -103,20 +107,12 @@ export default function SubscribePanel({
             <div className="text-xl mb-1">🌙</div>
             <div className="font-bold">Dinner</div>
             <div className="text-xs font-semibold mt-0.5">
-              ₹{PRICE_ONE_SLOT.toLocaleString()}<span className="font-normal opacity-60">/month</span>
+              ₹{dinnerPrice.toLocaleString()}<span className="font-normal opacity-60">/month</span>
             </div>
             <div className="text-[10px] opacity-60 mt-0.5">30 tokens</div>
           </button>
         )}
       </div>
-
-      {selected.length === 2 && (
-        <div className="rounded-xl bg-green-50 border border-green-200 px-3 py-2 mb-4 text-center">
-          <p className="text-xs text-green-800 font-semibold">
-            Both slots selected — save ₹{(PRICE_ONE_SLOT * 2 - PRICE_BOTH_SLOTS).toLocaleString()} vs buying separately
-          </p>
-        </div>
-      )}
 
       {selected.length > 0 && (
         <div className="rounded-xl bg-[var(--color-surface-alt)] border border-[var(--color-border)] px-4 py-3 mb-4">

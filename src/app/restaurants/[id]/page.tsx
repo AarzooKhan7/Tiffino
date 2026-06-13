@@ -19,7 +19,7 @@ export default async function PublicRestaurantPage({ params }: { params: Promise
   const supabase = await createClient();
 
   const [{ data: restaurant }, { data: { user } }] = await Promise.all([
-    supabase.from("restaurants").select("id, name, area, address, base_price, serves_lunch, serves_dinner").eq("id", id).single(),
+    supabase.from("restaurants").select("id, name, area, address, lunch_price, dinner_price, serves_lunch, serves_dinner").eq("id", id).single(),
     supabase.auth.getUser(),
   ]);
 
@@ -85,11 +85,32 @@ export default async function PublicRestaurantPage({ params }: { params: Promise
         {/* Info strip */}
         <div className="bg-white rounded-[var(--radius-card)] card-shadow px-5 py-4 flex flex-wrap gap-4 items-center">
           <div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-extrabold text-[var(--color-brand-secondary)]">₹1,500</span>
-              <span className="text-sm text-[var(--color-text-muted)]">/ slot / month</span>
-            </div>
-            <p className="text-xs text-[var(--color-text-muted)]">₹3,000 for both slots</p>
+            {restaurant.serves_lunch && restaurant.serves_dinner ? (
+              <>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl font-extrabold text-[var(--color-brand-secondary)]">
+                    ₹{Number(restaurant.lunch_price).toLocaleString()}
+                  </span>
+                  <span className="text-xs text-[var(--color-text-muted)]">lunch</span>
+                  <span className="text-[var(--color-text-muted)]">·</span>
+                  <span className="text-xl font-extrabold text-indigo-600">
+                    ₹{Number(restaurant.dinner_price).toLocaleString()}
+                  </span>
+                  <span className="text-xs text-[var(--color-text-muted)]">dinner</span>
+                </div>
+                <p className="text-xs text-[var(--color-text-muted)]">per month · 30 tokens/slot</p>
+              </>
+            ) : (
+              <>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-extrabold text-[var(--color-brand-secondary)]">
+                    ₹{Number(restaurant.serves_lunch ? restaurant.lunch_price : restaurant.dinner_price).toLocaleString()}
+                  </span>
+                  <span className="text-sm text-[var(--color-text-muted)]">/ month</span>
+                </div>
+                <p className="text-xs text-[var(--color-text-muted)]">30 tokens included</p>
+              </>
+            )}
           </div>
           <div className="flex gap-2 ml-auto flex-wrap">
             {restaurant.serves_lunch  && <span className="text-xs border border-[var(--color-border)] rounded-full px-3 py-1 text-[var(--color-text-secondary)] font-medium">🌞 Lunch</span>}
@@ -103,6 +124,8 @@ export default async function PublicRestaurantPage({ params }: { params: Promise
             restaurantName={restaurant.name}
             servesLunch={restaurant.serves_lunch}
             servesDinner={restaurant.serves_dinner}
+            lunchPrice={Number(restaurant.lunch_price)}
+            dinnerPrice={Number(restaurant.dinner_price)}
           />
         )}
         {isStudent && hasActiveSub && (

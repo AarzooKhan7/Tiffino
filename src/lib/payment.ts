@@ -1,13 +1,23 @@
 // ── Subscription plan pricing (INR) ──────────────────────────────────────────
-// Edit ONLY here to change prices everywhere — SubscribePanel, RenewPanel,
-// and the subscription server actions all import from this module.
+// Prices are now set per-restaurant (lunch_price, dinner_price columns).
+// These fallback constants are only used when restaurant prices are unavailable.
 
-export const PRICE_ONE_SLOT   = 1_500;   // lunch-only OR dinner-only (30 tokens)
-export const PRICE_BOTH_SLOTS = 3_000;   // lunch + dinner             (60 tokens)
+export const PRICE_ONE_SLOT   = 1_500;
+export const PRICE_BOTH_SLOTS = 3_000;
 
-/** Returns the 30-day plan price for the given slot selection. */
-export function calcPlanPrice(slots: string[]): number {
-  return slots.length >= 2 ? PRICE_BOTH_SLOTS : PRICE_ONE_SLOT;
+/**
+ * Returns the plan price for the selected slots using per-restaurant prices.
+ * Falls back to ₹1,500/slot if prices are not provided.
+ */
+export function calcPlanPrice(
+  slots: string[],
+  lunchPrice: number = PRICE_ONE_SLOT,
+  dinnerPrice: number = PRICE_ONE_SLOT,
+): number {
+  let total = 0;
+  if (slots.includes("lunch"))  total += lunchPrice;
+  if (slots.includes("dinner")) total += dinnerPrice;
+  return total > 0 ? total : PRICE_ONE_SLOT;
 }
 
 // ── Demo payment stub ─────────────────────────────────────────────────────────

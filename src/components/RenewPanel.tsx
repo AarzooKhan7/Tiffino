@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { renewSubscription } from "@/app/subscriptions/actions";
-import { PRICE_ONE_SLOT, calcPlanPrice } from "@/lib/payment";
+import { calcPlanPrice } from "@/lib/payment";
 
 interface Props {
   restaurantId: string;
@@ -11,6 +11,8 @@ interface Props {
   servesDinner: boolean;
   previousSubId: string | null;
   rolloverTokens: number;
+  lunchPrice: number;
+  dinnerPrice: number;
 }
 
 export default function RenewPanel({
@@ -20,6 +22,8 @@ export default function RenewPanel({
   servesDinner,
   previousSubId,
   rolloverTokens,
+  lunchPrice,
+  dinnerPrice,
 }: Props) {
   const [selected, setSelected] = useState<string[]>(() => {
     if (servesLunch && servesDinner) return ["lunch", "dinner"];
@@ -35,7 +39,7 @@ export default function RenewPanel({
       prev.includes(slot) ? prev.filter((s) => s !== slot) : [...prev, slot]
     );
 
-  const pricePerMonth = calcPlanPrice(selected);
+  const pricePerMonth = calcPlanPrice(selected, lunchPrice, dinnerPrice);
   const bonusTokens   = rolloverTokens > 0 ? rolloverTokens : 0;
 
   const handleRenew = () => {
@@ -98,7 +102,7 @@ export default function RenewPanel({
             <div className="text-xl mb-1">🌞</div>
             <div className="font-bold">Lunch</div>
             <div className="text-xs font-semibold mt-0.5">
-              ₹{PRICE_ONE_SLOT.toLocaleString()}<span className="font-normal opacity-60">/month</span>
+              ₹{lunchPrice.toLocaleString()}<span className="font-normal opacity-60">/month</span>
             </div>
           </button>
         )}
@@ -115,7 +119,7 @@ export default function RenewPanel({
             <div className="text-xl mb-1">🌙</div>
             <div className="font-bold">Dinner</div>
             <div className="text-xs font-semibold mt-0.5">
-              ₹{PRICE_ONE_SLOT.toLocaleString()}<span className="font-normal opacity-60">/month</span>
+              ₹{dinnerPrice.toLocaleString()}<span className="font-normal opacity-60">/month</span>
             </div>
           </button>
         )}

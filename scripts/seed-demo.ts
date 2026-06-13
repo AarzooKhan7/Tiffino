@@ -84,6 +84,8 @@ const RESTAURANTS = [
       area:               "Kothrud, Pune",
       address:            "42, Paud Road, Kothrud, Pune 411038",
       base_price:         70,
+      lunch_price:        1400,
+      dinner_price:       1600,
       serves_lunch:       true,
       serves_dinner:      true,
       lunch_skip_cutoff:  "10:00",
@@ -124,6 +126,8 @@ const RESTAURANTS = [
       area:               "Koregaon Park, Pune",
       address:            "7B, Lane 3, Koregaon Park, Pune 411001",
       base_price:         80,
+      lunch_price:        1200,
+      dinner_price:       1400,
       serves_lunch:       true,
       serves_dinner:      true,
       lunch_skip_cutoff:  "09:30",
@@ -164,6 +168,8 @@ const RESTAURANTS = [
       area:               "Baner, Pune",
       address:            "Office Road, Baner, Pune 411045",
       base_price:         90,
+      lunch_price:        1800,
+      dinner_price:       1800,
       serves_lunch:       true,
       serves_dinner:      false,
       lunch_skip_cutoff:  "10:30",
@@ -196,6 +202,8 @@ const RESTAURANTS = [
       area:               "Hadapsar, Pune",
       address:            "12, Magarpatta City Road, Hadapsar, Pune 411028",
       base_price:         65,
+      lunch_price:        1000,
+      dinner_price:       1200,
       serves_lunch:       true,
       serves_dinner:      true,
       lunch_skip_cutoff:  "10:00",
@@ -334,8 +342,13 @@ async function seedStudent(s: StudentDef, restaurantId: string): Promise<void> {
   const tokensTotal     = 30 * s.slots.length;
   const tokensConsumed  = s.subDaysAgo * s.slots.length;
   const tokensRemaining = Math.max(0, tokensTotal - tokensConsumed + Math.floor(tokensConsumed * 0.1)); // ~10% skipped
-  // Fixed plan pricing: ₹1,500 one slot / ₹3,000 both slots
-  const pricePaid       = s.slots.length >= 2 ? 3000 : 1500;
+  // Per-restaurant pricing
+  const rdef = RESTAURANTS[s.restIdx];
+  const lp = (rdef.rest as Record<string, unknown>).lunch_price  as number ?? 1500;
+  const dp = (rdef.rest as Record<string, unknown>).dinner_price as number ?? 1500;
+  const pricePaid =
+    (s.slots.includes("lunch")  ? lp : 0) +
+    (s.slots.includes("dinner") ? dp : 0);
 
   const { data: sub, error: subErr } = await db
     .from("subscriptions")

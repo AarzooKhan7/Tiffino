@@ -35,7 +35,7 @@ export async function createSubscription(
 
   const { data: restaurant } = await supabase
     .from("restaurants")
-    .select("id, base_price, serves_lunch, serves_dinner")
+    .select("id, lunch_price, dinner_price, serves_lunch, serves_dinner")
     .eq("id", restaurantId)
     .single();
   if (!restaurant) return { ok: false, error: "Restaurant not found" };
@@ -58,7 +58,7 @@ export async function createSubscription(
 
   const { start, end } = calcDates();
   const tokensTotal = 30 * validSlots.length;
-  const pricePaid   = calcPlanPrice(validSlots);
+  const pricePaid   = calcPlanPrice(validSlots, Number(restaurant.lunch_price), Number(restaurant.dinner_price));
 
   // ── PAYMENT ──────────────────────────────────────────────────────────────
   // Demo: completes instantly. Swap processDemoPayment() for a real gateway.
@@ -118,7 +118,7 @@ export async function renewSubscription(
   const [{ data: restaurant }, { data: existing }] = await Promise.all([
     service
       .from("restaurants")
-      .select("id, base_price, serves_lunch, serves_dinner")
+      .select("id, lunch_price, dinner_price, serves_lunch, serves_dinner")
       .eq("id", restaurantId)
       .single(),
     service
@@ -151,7 +151,7 @@ export async function renewSubscription(
 
   const { start, end } = calcDates();
   const tokensBase = 30 * validSlots.length;
-  const pricePaid  = calcPlanPrice(validSlots);
+  const pricePaid  = calcPlanPrice(validSlots, Number(restaurant.lunch_price), Number(restaurant.dinner_price));
 
   // ── PAYMENT ──────────────────────────────────────────────────────────────
   // Demo: completes instantly. Swap processDemoPayment() for a real gateway.
