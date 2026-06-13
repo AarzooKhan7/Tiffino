@@ -306,11 +306,12 @@ export default async function RestaurantDashboard() {
           {qrDataUrl && <RestaurantQR qrDataUrl={qrDataUrl} restaurantName={restaurant.name} />}
 
           {/* ── Quick links ── */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-4 gap-3">
             {[
-              { href: "/restaurant/menu",       emoji: "📅", label: "Weekly Menu" },
-              { href: "/restaurant/dishes",      emoji: "🍲", label: "Dish Library" },
-              { href: "/restaurant/subscribers", emoji: "👥", label: "Subscribers" },
+              { href: "/restaurant/kitchen",     emoji: "👨‍🍳", label: "Kitchen" },
+              { href: "/restaurant/menu",        emoji: "📅", label: "Menu" },
+              { href: "/restaurant/dishes",      emoji: "🍲", label: "Dishes" },
+              { href: "/restaurant/subscribers", emoji: "👥", label: "Members" },
             ].map(({ href, emoji, label }) => (
               <Link
                 key={href}
