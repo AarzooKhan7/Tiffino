@@ -6,8 +6,8 @@ import QRCode from "qrcode";
 import RestaurantQR from "@/components/RestaurantQR";
 import { nowIST } from "@/lib/ist";
 
-// Revalidate every 5 min — QR and menu don't change per-request
-export const revalidate = 300;
+// Must be dynamic — page has auth-based redirects
+export const dynamic = "force-dynamic";
 
 const DAY_NAMES = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 
@@ -60,11 +60,60 @@ export default async function RestaurantDashboard() {
   ]);
 
   const today = todayIdx;
+  const todayDateStr = nowIST().toISOString().slice(0, 10);
 
   const lunchRow   = (todayMenu ?? []).find((r) => r.meal_type === "lunch");
   const dinnerRow  = (todayMenu ?? []).find((r) => r.meal_type === "dinner");
   const lunchDish  = extractDish(lunchRow?.dish);
   const dinnerDish = extractDish(dinnerRow?.dish);
+
+  // Kitchen demand forecast — live from DB
+  interface ForecastSlot { expected: number; skipped: number; taken: number }
+  let lunchForecast: ForecastSlot = { expected: 0, skipped: 0, taken: 0 };
+  let dinnerForecast: ForecastSlot = { expected: 0, skipped: 0, taken: 0 };
+  let materialRows: { material: string; qty_per_serving: number; unit: string; dish_id: string }[] = [];
+
+  if (restaurant) {
+    const service = createServiceClient();
+    const lunchDishId = lunchRow ? (Array.isArray(lunchRow.dish) ? (lunchRow.dish[0] as { id?: string } | null)?.id : (lunchRow.dish as { id?: string } | null)?.id) : null;
+    const dinnerDishId = dinnerRow ? (Array.isArray(dinnerRow.dish) ? (dinnerRow.dish[0] as { id?: string } | null)?.id : (dinnerRow.dish as { id?: string } | null)?.id) : null;
+    const dishIds = [lunchDishId, dinnerDishId].filter(Boolean) as string[];
+
+    const [{ data: activeSubs }, { data: todayRedemptions }, { data: materials }] = await Promise.all([
+      service
+        .from("subscriptions")
+        .select("slots")
+        .eq("restaurant_id", restaurant.id)
+        .eq("status", "active"),
+      service
+        .from("redemptions")
+        .select("meal_type, status")
+        .eq("restaurant_id", restaurant.id)
+        .eq("meal_date", todayDateStr),
+      dishIds.length > 0
+        ? service
+            .from("material_requirements")
+            .select("material, qty_per_serving, unit, dish_id")
+            .in("dish_id", dishIds)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    for (const sub of activeSubs ?? []) {
+      const slots = (sub.slots as string[] | null) ?? [];
+      if (slots.includes("lunch"))  lunchForecast.expected++;
+      if (slots.includes("dinner")) dinnerForecast.expected++;
+    }
+    for (const r of todayRedemptions ?? []) {
+      if (r.meal_type === "lunch") {
+        if (r.status === "skipped") lunchForecast.skipped++;
+        if (r.status === "taken")   lunchForecast.taken++;
+      } else {
+        if (r.status === "skipped") dinnerForecast.skipped++;
+        if (r.status === "taken")   dinnerForecast.taken++;
+      }
+    }
+    materialRows = (materials ?? []) as typeof materialRows;
+  }
 
   return (
     <div className="space-y-4">
@@ -124,11 +173,45 @@ export default async function RestaurantDashboard() {
             )}
           </div>
 
+          {/* Kitchen demand forecast */}
+          <div className="card-shadow rounded-[var(--radius-card)] bg-white px-6 py-5">
+            <h2 className="font-semibold text-[var(--color-text-primary)] mb-1">Kitchen demand — today</h2>
+            <p className="text-xs text-[var(--color-text-muted)] mb-4">Expected meals based on active subscriptions</p>
+            <div className="grid grid-cols-2 gap-3">
+              {restaurant.serves_lunch && (
+                <ForecastCard slot="Lunch" dish={lunchDish} forecast={lunchForecast} />
+              )}
+              {restaurant.serves_dinner && (
+                <ForecastCard slot="Dinner" dish={dinnerDish} forecast={dinnerForecast} />
+              )}
+            </div>
+            {materialRows.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wide mb-2">Raw material estimate</p>
+                <div className="space-y-1.5">
+                  {materialRows.map((m, i) => {
+                    const isLunch  = lunchRow  && (Array.isArray(lunchRow.dish) ? (lunchRow.dish[0] as {id?:string}|null)?.id : (lunchRow.dish as {id?:string}|null)?.id) === m.dish_id;
+                    const remaining = isLunch
+                      ? Math.max(0, lunchForecast.expected - lunchForecast.skipped - lunchForecast.taken)
+                      : Math.max(0, dinnerForecast.expected - dinnerForecast.skipped - dinnerForecast.taken);
+                    const total = (m.qty_per_serving * remaining).toFixed(1);
+                    return (
+                      <div key={i} className="flex items-center justify-between text-sm">
+                        <span className="text-[var(--color-text-primary)]">{m.material}</span>
+                        <span className="font-semibold text-[var(--color-text-secondary)]">{total} {m.unit}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[
-              { href: "/restaurant/menu",   emoji: "📅", label: "Edit Weekly Menu" },
-              { href: "/restaurant/dishes", emoji: "🍲", label: "Manage Dishes" },
-              { href: "/restaurant/setup",  emoji: "⚙️", label: "Restaurant Settings" },
+              { href: "/restaurant/menu",        emoji: "📅", label: "Edit Weekly Menu" },
+              { href: "/restaurant/dishes",       emoji: "🍲", label: "Manage Dishes" },
+              { href: "/restaurant/subscribers",  emoji: "👥", label: "View Subscribers" },
             ].map(({ href, emoji, label }) => (
               <Link key={href} href={href}
                 className="card-shadow rounded-[var(--radius-card)] bg-white px-4 py-4 flex flex-col gap-1 hover:shadow-md transition-shadow">
@@ -139,6 +222,34 @@ export default async function RestaurantDashboard() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function ForecastCard({ slot, dish, forecast }: {
+  slot: string;
+  dish: DishInfo | null;
+  forecast: { expected: number; skipped: number; taken: number };
+}) {
+  const remaining = Math.max(0, forecast.expected - forecast.skipped - forecast.taken);
+  const pct = forecast.expected > 0 ? Math.round((forecast.taken / forecast.expected) * 100) : 0;
+
+  return (
+    <div className="rounded-[var(--radius-btn)] border border-[var(--color-border)] px-4 py-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wide">{slot}</p>
+        {dish && <span className="text-xs text-[var(--color-text-secondary)] truncate max-w-[80px]">{dish.name}</span>}
+      </div>
+      <div className="flex items-end gap-1">
+        <span className="text-3xl font-extrabold text-[var(--color-text-primary)] leading-none">{remaining}</span>
+        <span className="text-xs text-[var(--color-text-muted)] mb-0.5">remaining</span>
+      </div>
+      <div className="h-1.5 bg-[var(--color-surface-alt)] rounded-full overflow-hidden">
+        <div className="h-full bg-[var(--color-brand-secondary)] rounded-full transition-all" style={{ width: `${pct}%` }} />
+      </div>
+      <p className="text-[10px] text-[var(--color-text-muted)]">
+        {forecast.taken} served · {forecast.skipped} skipped · {forecast.expected} total
+      </p>
     </div>
   );
 }
