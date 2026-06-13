@@ -45,7 +45,7 @@ export async function upsertDish(formData: FormData) {
 
   if (dbError) throw new Error(dbError.message);
   revalidatePath("/restaurant/dishes");
-  redirect("/restaurant/dishes");
+  redirect(`/restaurant/dishes?toast=${id ? "saved" : "added"}`);
 }
 
 export async function deleteDish(formData: FormData) {
@@ -60,5 +60,5 @@ export async function deleteDish(formData: FormData) {
   await supabase.from("dishes").delete().eq("id", id).eq("restaurant_id", restaurantId);
 
   revalidatePath("/restaurant/dishes");
-  redirect("/restaurant/dishes");
+  redirect("/restaurant/dishes?toast=deleted");
 }

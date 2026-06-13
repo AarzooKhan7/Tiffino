@@ -86,7 +86,7 @@ export default async function StudentDashboard() {
       .maybeSingle(),
     supabase
       .from("subscriptions")
-      .select("id, rollover_in, end_date, slots, restaurant:restaurant_id(id, name, area, serves_lunch, serves_dinner, lunch_price, dinner_price)")
+      .select("id, rollover_in, end_date, slots, restaurant:restaurant_id(id, name, area, serves_lunch, serves_dinner, lunch_price, dinner_price, bundle_price)")
       .eq("student_id", user.id)
       .eq("status", "expired")
       .order("end_date", { ascending: false })
@@ -157,7 +157,7 @@ export default async function StudentDashboard() {
   const attendPct    = monthTotal > 0 ? Math.round((monthTaken / monthTotal) * 100) : 0;
   const countdown    = subscription ? nextMealCountdown(now, slots) : null;
 
-  type ExpiredRestaurant = { id: string; name: string; area: string; serves_lunch: boolean; serves_dinner: boolean; lunch_price: number; dinner_price: number };
+  type ExpiredRestaurant = { id: string; name: string; area: string; serves_lunch: boolean; serves_dinner: boolean; lunch_price: number; dinner_price: number; bundle_price?: number | null };
   const expiredRestaurant = expiredSub
     ? (Array.isArray(expiredSub.restaurant) ? expiredSub.restaurant[0] : expiredSub.restaurant) as ExpiredRestaurant | null
     : null;
@@ -407,6 +407,7 @@ export default async function StudentDashboard() {
             rolloverTokens={Number(expiredSub.rollover_in ?? 0)}
             lunchPrice={Number(expiredRestaurant.lunch_price ?? 1500)}
             dinnerPrice={Number(expiredRestaurant.dinner_price ?? 1500)}
+            bundlePrice={expiredRestaurant.bundle_price ?? null}
           />
           <p className="text-xs text-center text-[var(--color-text-muted)]">
             Want a different mess?{" "}

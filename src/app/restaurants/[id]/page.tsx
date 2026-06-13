@@ -20,7 +20,7 @@ export default async function PublicRestaurantPage({ params }: { params: Promise
   const supabase = await createClient();
 
   const [{ data: restaurant }, { data: { user } }] = await Promise.all([
-    supabase.from("restaurants").select("id, name, area, address, lunch_price, dinner_price, serves_lunch, serves_dinner").eq("id", id).single(),
+    supabase.from("restaurants").select("id, name, area, address, lunch_price, dinner_price, bundle_price, serves_lunch, serves_dinner").eq("id", id).single(),
     supabase.auth.getUser(),
   ]);
 
@@ -172,6 +172,7 @@ export default async function PublicRestaurantPage({ params }: { params: Promise
             servesDinner={restaurant.serves_dinner}
             lunchPrice={Number(restaurant.lunch_price)}
             dinnerPrice={Number(restaurant.dinner_price)}
+            bundlePrice={restaurant.bundle_price !== null && restaurant.bundle_price !== undefined ? Number(restaurant.bundle_price) : null}
           />
         )}
         {isStudent && hasActiveSub && (

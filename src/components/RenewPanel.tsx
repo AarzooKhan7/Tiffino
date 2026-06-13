@@ -13,6 +13,7 @@ interface Props {
   rolloverTokens: number;
   lunchPrice: number;
   dinnerPrice: number;
+  bundlePrice?: number | null;
 }
 
 export default function RenewPanel({
@@ -24,6 +25,7 @@ export default function RenewPanel({
   rolloverTokens,
   lunchPrice,
   dinnerPrice,
+  bundlePrice,
 }: Props) {
   const [selected, setSelected] = useState<string[]>(() => {
     if (servesLunch && servesDinner) return ["lunch", "dinner"];
@@ -39,7 +41,7 @@ export default function RenewPanel({
       prev.includes(slot) ? prev.filter((s) => s !== slot) : [...prev, slot]
     );
 
-  const pricePerMonth = calcPlanPrice(selected, lunchPrice, dinnerPrice);
+  const pricePerMonth = calcPlanPrice(selected, lunchPrice, dinnerPrice, bundlePrice);
   const bonusTokens   = rolloverTokens > 0 ? rolloverTokens : 0;
 
   const handleRenew = () => {
@@ -58,8 +60,16 @@ export default function RenewPanel({
 
   if (done) {
     return (
-      <div className="rounded-[var(--radius-card)] bg-green-50 border border-green-200 px-5 py-4 text-center">
-        <p className="text-green-700 font-semibold text-sm">🎉 Plan renewed! Redirecting to your dashboard…</p>
+      <div className="success-pop rounded-[var(--radius-card)] bg-green-50 border border-green-200 px-5 py-6 text-center">
+        <div className="flex justify-center mb-3">
+          <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center shadow-md shadow-green-200">
+            <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+        </div>
+        <p className="text-green-800 font-bold text-base">Plan renewed!</p>
+        <p className="text-green-700 text-sm mt-0.5">Redirecting to your dashboard…</p>
       </div>
     );
   }

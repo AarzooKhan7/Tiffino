@@ -11,6 +11,7 @@ interface Props {
   servesDinner: boolean;
   lunchPrice: number;
   dinnerPrice: number;
+  bundlePrice?: number | null;
 }
 
 export default function SubscribePanel({
@@ -20,6 +21,7 @@ export default function SubscribePanel({
   servesDinner,
   lunchPrice,
   dinnerPrice,
+  bundlePrice,
 }: Props) {
   const [selected, setSelected] = useState<string[]>(() => {
     if (servesLunch && servesDinner) return ["lunch", "dinner"];
@@ -35,7 +37,7 @@ export default function SubscribePanel({
       prev.includes(slot) ? prev.filter((s) => s !== slot) : [...prev, slot]
     );
 
-  const price  = calcPlanPrice(selected, lunchPrice, dinnerPrice);
+  const price  = calcPlanPrice(selected, lunchPrice, dinnerPrice, bundlePrice);
   const tokens = 30 * selected.length;
 
   const handleSubscribe = () => {
@@ -54,8 +56,16 @@ export default function SubscribePanel({
 
   if (done) {
     return (
-      <div className="mt-4 rounded-[var(--radius-card)] bg-green-50 border border-green-200 px-5 py-4 text-center">
-        <p className="text-green-700 font-semibold text-sm">🎉 Subscribed! Redirecting to your dashboard…</p>
+      <div className="success-pop rounded-[var(--radius-card)] bg-green-50 border border-green-200 px-5 py-6 text-center">
+        <div className="flex justify-center mb-3">
+          <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center shadow-md shadow-green-200">
+            <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+        </div>
+        <p className="text-green-800 font-bold text-base">Subscribed!</p>
+        <p className="text-green-700 text-sm mt-0.5">Redirecting to your dashboard…</p>
       </div>
     );
   }
@@ -122,6 +132,11 @@ export default function SubscribePanel({
                 30 days · {selected.map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(" + ")}
               </p>
               <p className="text-xs text-[var(--color-text-muted)]">{tokens} meal tokens included</p>
+              {bundlePrice && bundlePrice > 0 && selected.includes("lunch") && selected.includes("dinner") && (
+                <p className="text-[11px] text-green-700 font-semibold mt-0.5">
+                  🎁 Bundle deal — saves ₹{(lunchPrice + dinnerPrice - bundlePrice).toLocaleString()}
+                </p>
+              )}
             </div>
             <span className="text-2xl font-extrabold text-[var(--color-text-primary)]">
               ₹{price.toLocaleString()}

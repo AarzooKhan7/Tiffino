@@ -7,16 +7,21 @@ export const PRICE_BOTH_SLOTS = 3_000;
 
 /**
  * Returns the plan price for the selected slots using per-restaurant prices.
+ * When both slots are selected and bundlePrice is provided, uses the bundle rate.
  * Falls back to ₹1,500/slot if prices are not provided.
  */
 export function calcPlanPrice(
   slots: string[],
   lunchPrice: number = PRICE_ONE_SLOT,
   dinnerPrice: number = PRICE_ONE_SLOT,
+  bundlePrice?: number | null,
 ): number {
+  const hasLunch  = slots.includes("lunch");
+  const hasDinner = slots.includes("dinner");
+  if (hasLunch && hasDinner && bundlePrice && bundlePrice > 0) return bundlePrice;
   let total = 0;
-  if (slots.includes("lunch"))  total += lunchPrice;
-  if (slots.includes("dinner")) total += dinnerPrice;
+  if (hasLunch)  total += lunchPrice;
+  if (hasDinner) total += dinnerPrice;
   return total > 0 ? total : PRICE_ONE_SLOT;
 }
 
