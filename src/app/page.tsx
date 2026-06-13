@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import AppHeader from "@/components/AppHeader";
 import HomeClient, { type HomeListing } from "@/components/HomeClient";
+import BottomNav from "@/components/BottomNav";
 import { restaurantRating } from "@/lib/food-images";
 
 export const dynamic = "force-dynamic";
@@ -40,7 +41,10 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen bg-[var(--color-surface-alt)]">
       <AppHeader userName={userName} role={role} />
-      <HomeClient restaurants={listings} isLoggedIn={!!user} />
+      <div className={role === "student" ? "pb-20 md:pb-0" : ""}>
+        <HomeClient restaurants={listings} isLoggedIn={!!user} />
+      </div>
+      {role === "student" && <BottomNav userName={userName} />}
     </div>
   );
 }

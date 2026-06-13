@@ -73,7 +73,9 @@ export default function DailyActions({ subscriptionId, slots, todayStatuses, ski
             projectedRollover:    Math.min(newLunch, FREE) + Math.min(newDinner, FREE),
           };
         });
-        showToast(true, `${slot.charAt(0).toUpperCase() + slot.slice(1)} skipped.`);
+        const label = slot === "lunch" ? "🌞 Lunch" : "🌙 Dinner";
+        showToast(true, `${label} skipped · token kept for rollover`);
+        router.refresh();
       } else {
         showToast(false, res.error ?? "Skip failed");
       }

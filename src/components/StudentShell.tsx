@@ -6,10 +6,13 @@ import BottomNav from "./BottomNav";
 interface Props {
   userName: string | null;
   unreadCount?: number;
+  subscriptionId?: string | null;
+  slots?: string[];
+  restaurantName?: string | null;
   children: React.ReactNode;
 }
 
-export default function StudentShell({ userName, unreadCount = 0, children }: Props) {
+export default function StudentShell({ userName, unreadCount = 0, subscriptionId, slots, restaurantName, children }: Props) {
   return (
     <div className="min-h-screen bg-[var(--color-surface-alt)]">
 
@@ -58,7 +61,12 @@ export default function StudentShell({ userName, unreadCount = 0, children }: Pr
       </main>
 
       {/* ── Bottom nav (mobile only) ─────────────────────────────────── */}
-      <BottomNav userName={userName} />
+      <BottomNav
+        userName={userName}
+        subscriptionId={subscriptionId}
+        slots={slots}
+        restaurantName={restaurantName}
+      />
     </div>
   );
 }

@@ -71,23 +71,6 @@ export default function MenuBuilder({
     setGrid((prev) => ({ ...prev, [day]: { ...prev[day], [meal]: dishId } }));
   }
 
-  function copyDayForward(fromDay: number) {
-    if (fromDay >= 6) return;
-    setGrid((prev) => ({ ...prev, [fromDay + 1]: { ...prev[fromDay] } }));
-    showToast(`${DAYS[fromDay]} copied to ${DAYS[fromDay + 1]}`);
-  }
-
-  function copyDayToAll(fromDay: number) {
-    setGrid((prev) => {
-      const next = { ...prev };
-      for (let d = 0; d < 7; d++) {
-        if (d !== fromDay) next[d] = { ...prev[fromDay] };
-      }
-      return next;
-    });
-    showToast(`${DAYS[fromDay]} applied to all days`);
-  }
-
   function clearDay(day: number) {
     setGrid((prev) => ({ ...prev, [day]: { lunch: "", dinner: "" } }));
   }
@@ -212,8 +195,6 @@ export default function MenuBuilder({
               dishes={dishes}
               dishById={dishById}
               onSetCell={setCell}
-              onCopyForward={copyDayForward}
-              onCopyToAll={copyDayToAll}
               onClear={clearDay}
             />
           );
@@ -240,9 +221,6 @@ export default function MenuBuilder({
           )}
         </button>
         {menuError && <span className="text-sm text-red-500">{menuError}</span>}
-        <span className="text-xs text-[var(--color-text-muted)] ml-auto hidden sm:block">
-          Tip: use &quot;Copy to all&quot; to apply one day&apos;s dishes across the week
-        </span>
       </div>
 
       {/* Diet legend */}
@@ -267,16 +245,13 @@ interface DayCardProps {
   dishes: Dish[];
   dishById: Record<string, Dish>;
   onSetCell: (day: number, meal: "lunch" | "dinner", dishId: string) => void;
-  onCopyForward: (day: number) => void;
-  onCopyToAll: (day: number) => void;
   onClear: (day: number) => void;
 }
 
 function DayCard({
   dayName, dayIdx, isWeekend, slots, grid, dishes, dishById,
-  onSetCell, onCopyForward, onCopyToAll, onClear,
+  onSetCell, onClear,
 }: DayCardProps) {
-  const [showCopyMenu, setShowCopyMenu] = useState(false);
   const daySlots = grid[dayIdx];
   const filledCount = slots.filter((s) => !!daySlots[s]).length;
 
@@ -295,14 +270,7 @@ function DayCard({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2 relative">
-          <button
-            type="button"
-            onClick={() => setShowCopyMenu((v) => !v)}
-            className="text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-brand-primary)] border border-[var(--color-border)] hover:border-[var(--color-brand-primary)] rounded-lg px-2.5 py-1 transition-colors font-medium"
-          >
-            Copy ▾
-          </button>
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => onClear(dayIdx)}
@@ -310,27 +278,6 @@ function DayCard({
           >
             Clear
           </button>
-
-          {showCopyMenu && (
-            <div className="absolute right-0 top-full mt-1 z-20 bg-white rounded-xl card-shadow border border-[var(--color-border)] min-w-[160px] py-1">
-              {dayIdx < 6 && (
-                <button
-                  type="button"
-                  onClick={() => { onCopyForward(dayIdx); setShowCopyMenu(false); }}
-                  className="w-full text-left text-xs px-4 py-2 hover:bg-[var(--color-surface-alt)] text-[var(--color-text-secondary)]"
-                >
-                  Copy to {DAYS[dayIdx + 1]}
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => { onCopyToAll(dayIdx); setShowCopyMenu(false); }}
-                className="w-full text-left text-xs px-4 py-2 hover:bg-[var(--color-surface-alt)] text-[var(--color-text-secondary)]"
-              >
-                Apply to all days
-              </button>
-            </div>
-          )}
         </div>
       </div>
 

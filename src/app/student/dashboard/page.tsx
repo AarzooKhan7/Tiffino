@@ -114,7 +114,7 @@ export default async function StudentDashboard() {
   let weekMenu: Record<number, { lunch?: Dish | null; dinner?: Dish | null }> = {};
   let skipStats = { lunchSkips: 0, dinnerSkips: 0, freeLunchRemaining: 4, freeDinnerRemaining: 4, tokensAtRisk: 0, projectedRollover: 0 };
   let streak = 0;
-  let monthTaken = 0, monthTotal = 0;
+  let monthTaken = 0, monthSkipped = 0, monthTotal = 0;
 
   // 7-day attendance grid: date → slot → status
   type DayGrid = Record<string, Record<string, SlotStatus>>;
@@ -168,7 +168,8 @@ export default async function StudentDashboard() {
 
     for (const r of monthRedemptions ?? []) {
       monthTotal++;
-      if (r.status === "taken") monthTaken++;
+      if (r.status === "taken")   monthTaken++;
+      if (r.status === "skipped") monthSkipped++;
     }
 
     // Build attendance grid
@@ -196,6 +197,12 @@ export default async function StudentDashboard() {
     : 0;
   const attendPct  = monthTotal > 0 ? Math.round((monthTaken / monthTotal) * 100) : 0;
   const countdown  = subscription ? nextMealCountdown(now, slots) : null;
+
+  // Savings from free skips: each rollover token = 1 meal saved = price per meal
+  const pricePerMeal = subscription && Number(subscription.tokens_total) > 0
+    ? Math.round(Number(subscription.price_paid) / Number(subscription.tokens_total))
+    : 0;
+  const savingsFromSkips = skipStats.projectedRollover * pricePerMeal;
 
   type ExpiredRestaurant = {
     id: string; name: string; area: string;
@@ -315,8 +322,13 @@ export default async function StudentDashboard() {
           {/* ── Stat pills ── */}
           <div className="grid grid-cols-3 gap-2.5">
             <StatPill icon="📅" label="Attendance" value={`${attendPct}%`} sub="this month" color={attendPct >= 70 ? "green" : "amber"} />
+            <StatPill icon="✅" label="Eaten"      value={String(monthTaken)} sub="this month" color="green" />
+            <StatPill icon="⏭" label="Skipped"    value={String(monthSkipped)} sub="this month" color={monthSkipped > 4 ? "amber" : "default"} />
+          </div>
+          <div className="grid grid-cols-3 gap-2.5">
             <StatPill icon="🎁" label="Rollover"   value={`+${skipStats.projectedRollover}`} sub="tokens" color="brand" />
             <StatPill icon="🔥" label="Streak"     value={`${streak}d`} sub="in a row" color={streak >= 7 ? "amber" : "default"} />
+            <StatPill icon="💰" label="Savings"    value={savingsFromSkips > 0 ? `₹${savingsFromSkips}` : "—"} sub="from skips" color={savingsFromSkips > 0 ? "green" : "default"} />
           </div>
 
           {/* ── Next meal countdown ── */}
