@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import NudgeButton from "./NudgeButton";
+import NotifyComposer from "@/components/NotifyComposer";
 import { nowIST } from "@/lib/ist";
 
 export const dynamic = "force-dynamic";
@@ -178,17 +179,31 @@ export default async function SubscriberDetailPage({
             </div>
           </div>
 
-          {/* Nudge */}
-          <div className="bg-white rounded-[var(--radius-card)] card-shadow px-5 py-4">
-            <h2 className="font-semibold text-[var(--color-text-primary)] mb-1 text-sm">Send nudge</h2>
-            <p className="text-xs text-[var(--color-text-muted)] mb-3">
-              Sends a notification to this student — useful if their token balance is running low.
-            </p>
-            <NudgeButton
-              studentId={studentId}
-              studentName={studentProfile.name as string ?? "Student"}
-              tokensRemaining={Number(subscription.tokens_remaining)}
-            />
+          {/* Notifications */}
+          <div className="bg-white rounded-[var(--radius-card)] card-shadow px-5 py-4 space-y-4">
+            <div>
+              <h2 className="font-semibold text-[var(--color-text-primary)] text-sm mb-1">Send nudge</h2>
+              <p className="text-xs text-[var(--color-text-muted)] mb-3">
+                Quick notification when token balance is running low.
+              </p>
+              <NudgeButton
+                studentId={studentId}
+                studentName={studentProfile.name as string ?? "Student"}
+                tokensRemaining={Number(subscription.tokens_remaining)}
+              />
+            </div>
+
+            <div className="border-t border-[var(--color-border)] pt-4">
+              <h2 className="font-semibold text-[var(--color-text-primary)] text-sm mb-1">Custom message</h2>
+              <p className="text-xs text-[var(--color-text-muted)] mb-3">
+                Send any custom message — announcements, menu changes, schedule updates, etc.
+              </p>
+              <NotifyComposer
+                studentId={studentId}
+                studentName={studentProfile.name as string ?? "Student"}
+                restaurantName={restaurant.name}
+              />
+            </div>
           </div>
         </>
       )}

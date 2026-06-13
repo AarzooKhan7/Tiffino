@@ -41,9 +41,21 @@ export default function MenuBuilder({
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copyFrom, setCopyFrom] = useState<number | null>(null);
 
   function setCell(day: number, meal: "lunch" | "dinner", dishId: string) {
     setGrid((prev) => ({ ...prev, [day]: { ...prev[day], [meal]: dishId } }));
+    setSaved(false);
+  }
+
+  function copyDayTo(fromDay: number, toDay: number) {
+    setGrid((prev) => ({ ...prev, [toDay]: { ...prev[fromDay] } }));
+    setSaved(false);
+    setCopyFrom(null);
+  }
+
+  function clearDay(day: number) {
+    setGrid((prev) => ({ ...prev, [day]: { lunch: "", dinner: "" } }));
     setSaved(false);
   }
 
@@ -51,7 +63,7 @@ export default function MenuBuilder({
     setError(null);
     const cells: { day_of_week: number; meal_type: "lunch" | "dinner"; dish_id: string }[] = [];
     for (let day = 0; day < 7; day++) {
-      if (servesLunch && grid[day].lunch)  cells.push({ day_of_week: day, meal_type: "lunch"  as const, dish_id: grid[day].lunch });
+      if (servesLunch  && grid[day].lunch)  cells.push({ day_of_week: day, meal_type: "lunch"  as const, dish_id: grid[day].lunch });
       if (servesDinner && grid[day].dinner) cells.push({ day_of_week: day, meal_type: "dinner" as const, dish_id: grid[day].dinner });
     }
     startTransition(async () => {
@@ -65,12 +77,34 @@ export default function MenuBuilder({
   }
 
   const meals = [
-    ...(servesLunch  ? [{ key: "lunch"  as const, label: "Lunch" }] : []),
+    ...(servesLunch  ? [{ key: "lunch"  as const, label: "Lunch"  }] : []),
     ...(servesDinner ? [{ key: "dinner" as const, label: "Dinner" }] : []),
   ];
 
   return (
     <div className="space-y-4">
+      {copyFrom !== null && (
+        <div className="bg-orange-50 border border-orange-200 rounded-[var(--radius-card)] px-5 py-3.5 flex items-center justify-between gap-3">
+          <p className="text-sm text-orange-800 font-medium">
+            Copy <strong>{DAYS[copyFrom]}</strong> to which day?
+          </p>
+          <div className="flex gap-1.5 flex-wrap">
+            {DAYS.map((d, i) => (
+              i !== copyFrom && (
+                <button key={i} onClick={() => copyDayTo(copyFrom, i)}
+                  className="text-xs bg-orange-600 text-white px-2.5 py-1 rounded-lg hover:bg-orange-700 transition-colors font-medium">
+                  {d}
+                </button>
+              )
+            ))}
+            <button onClick={() => setCopyFrom(null)}
+              className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-lg hover:bg-gray-200 transition-colors">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="card-shadow rounded-[var(--radius-card)] bg-white overflow-x-auto">
         <table className="w-full min-w-[600px] text-sm border-collapse">
           <thead>
@@ -78,9 +112,27 @@ export default function MenuBuilder({
               <th className="text-left px-4 py-3 text-xs font-semibold text-[var(--color-text-muted)] w-20">
                 Meal
               </th>
-              {DAYS.map((d) => (
-                <th key={d} className="text-center px-2 py-3 text-xs font-semibold text-[var(--color-text-primary)]">
-                  {d}
+              {DAYS.map((d, i) => (
+                <th key={d} className="text-center px-2 py-2 min-w-[110px]">
+                  <div className="flex flex-col items-center gap-1.5">
+                    <span className="text-xs font-semibold text-[var(--color-text-primary)]">{d}</span>
+                    <div className="flex gap-1">
+                      <button
+                        title={`Copy ${d}`}
+                        onClick={() => setCopyFrom(i)}
+                        className="text-[10px] px-1.5 py-0.5 rounded border border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-brand-primary)] hover:text-[var(--color-brand-primary)] transition-colors"
+                      >
+                        Copy
+                      </button>
+                      <button
+                        title={`Clear ${d}`}
+                        onClick={() => clearDay(i)}
+                        className="text-[10px] px-1.5 py-0.5 rounded border border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-red-300 hover:text-red-400 transition-colors"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
                 </th>
               ))}
             </tr>
@@ -110,9 +162,7 @@ export default function MenuBuilder({
                           ))}
                         </select>
                         {selectedDish && (
-                          <span
-                            className={`absolute right-2 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full ${DIET_DOT[selectedDish.diet_type] ?? "bg-gray-400"}`}
-                          />
+                          <span className={`absolute right-2 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full ${DIET_DOT[selectedDish.diet_type] ?? "bg-gray-400"}`} />
                         )}
                       </div>
                     </td>
@@ -128,15 +178,15 @@ export default function MenuBuilder({
         <button
           onClick={handleSave}
           disabled={isPending}
-          className="bg-[var(--color-brand-primary)] text-white font-semibold text-sm px-6 py-2.5 rounded-[var(--radius-btn)] hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="btn-primary px-6 py-2.5 text-sm disabled:opacity-50"
         >
           {isPending ? "Saving…" : "Save menu"}
         </button>
-        {saved && <span className="text-sm text-green-600 font-medium">✓ Saved</span>}
-        {error && <span className="text-sm text-red-500">{error}</span>}
+        {saved  && <span className="text-sm text-green-600 font-medium">✓ Saved</span>}
+        {error  && <span className="text-sm text-red-500">{error}</span>}
+        <span className="text-xs text-[var(--color-text-muted)] ml-auto">Tip: use Copy to duplicate a day&apos;s meals across the week</span>
       </div>
 
-      {/* Legend */}
       <div className="flex gap-4 text-xs text-[var(--color-text-muted)]">
         {Object.entries(DIET_DOT).map(([type, cls]) => (
           <span key={type} className="flex items-center gap-1.5">

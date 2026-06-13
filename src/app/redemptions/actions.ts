@@ -6,7 +6,7 @@ import { nowIST, todayISODate, currentMonthBounds } from "@/lib/ist";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-export type ActionResult = { ok: boolean; error?: string };
+export type ActionResult = { ok: boolean; error?: string; tokensRemaining?: number };
 
 export interface SkipStats {
   lunchSkips: number;
@@ -44,6 +44,17 @@ export async function claimMeal(
   if (sub.status !== "active") return { ok: false, error: "Subscription is not active" };
   if (!(sub.slots as string[]).includes(slot)) return { ok: false, error: `Not subscribed to ${slot}` };
   if (Number(sub.tokens_remaining) <= 0) return { ok: false, error: "No tokens remaining" };
+
+  // 1b — Enforce scan time window (IST server time)
+  {
+    const now = nowIST();
+    const hhmm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const openTime = slot === "lunch" ? "11:00" : "17:00";
+    const openLabel = slot === "lunch" ? "11:00 AM" : "5:00 PM";
+    if (hhmm < openTime) {
+      return { ok: false, error: `${slot.charAt(0).toUpperCase() + slot.slice(1)} scanning opens at ${openLabel} IST` };
+    }
+  }
 
   // 2 — Verify the scanned token belongs to the correct restaurant (server-only lookup)
   const service = createServiceClient();
@@ -97,8 +108,9 @@ export async function claimMeal(
     .gt("tokens_remaining", 0); // extra guard: only decrement if still > 0
   if (updateErr) return { ok: false, error: "Token decrement failed: " + updateErr.message };
 
+  const tokensRemaining = Math.max(0, currentTokens - 1);
   revalidatePath("/student/dashboard");
-  return { ok: true };
+  return { ok: true, tokensRemaining };
 }
 
 // ── SKIP MEAL ─────────────────────────────────────────────────────────────

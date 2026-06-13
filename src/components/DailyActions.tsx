@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, lazy, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import { claimMeal, skipMeal, type ActionResult, type SkipStats } from "@/app/redemptions/actions";
 
 const QRScanner = lazy(() => import("./QRScanner"));
@@ -17,14 +18,16 @@ interface Props {
   slots: string[];
   todayStatuses: { lunch: SlotStatus; dinner: SlotStatus };
   skipStats: SkipStats;
+  restaurantName: string;
 }
 
-export default function DailyActions({ subscriptionId, slots, todayStatuses, skipStats: initialSkipStats }: Props) {
+export default function DailyActions({ subscriptionId, slots, todayStatuses, skipStats: initialSkipStats, restaurantName }: Props) {
   const [statuses, setStatuses] = useState<SlotState>(todayStatuses);
   const [skipStats, setSkipStats] = useState<SkipStats>(initialSkipStats);
   const [scanning, setScanning] = useState<"lunch" | "dinner" | null>(null);
   const [toast, setToast] = useState<{ ok: boolean; msg: string } | null>(null);
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   function showToast(ok: boolean, msg: string) {
     setToast({ ok, msg });
@@ -32,15 +35,21 @@ export default function DailyActions({ subscriptionId, slots, todayStatuses, ski
   }
 
   async function handleScan(slot: "lunch" | "dinner", token: string) {
-    // Keep scanner open until we know the result — close only on success
     startTransition(async () => {
       const res: ActionResult = await claimMeal(subscriptionId, slot, token);
       if (res.ok) {
         setScanning(null);
         setStatuses((s) => ({ ...s, [slot]: "taken" as SlotStatus }));
-        showToast(true, `${slot.charAt(0).toUpperCase() + slot.slice(1)} scanned — token consumed!`);
+        const now = new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" });
+        const params = new URLSearchParams({
+          slot,
+          restaurant: restaurantName,
+          tokens: String(res.tokensRemaining ?? ""),
+          time: now,
+        });
+        router.push(`/student/scan-success?${params.toString()}`);
       } else {
-        setScanning(null); // close scanner and show error as toast
+        setScanning(null);
         showToast(false, res.error ?? "Scan failed");
       }
     });
@@ -51,7 +60,6 @@ export default function DailyActions({ subscriptionId, slots, todayStatuses, ski
       const res: ActionResult = await skipMeal(subscriptionId, slot);
       if (res.ok) {
         setStatuses((s) => ({ ...s, [slot]: "skipped" as SlotStatus }));
-        // Update skip stats locally so bar reflects immediately
         setSkipStats((prev) => {
           const FREE = 4;
           const newLunch  = slot === "lunch"  ? prev.lunchSkips  + 1 : prev.lunchSkips;
@@ -141,7 +149,7 @@ function SlotCard({
     <div className={`slot-card rounded-2xl border-2 p-4 card-enter ${
       taken   ? "bg-green-50 border-green-200 shadow-sm" :
       skipped ? "bg-gray-50 border-gray-200"             :
-                "bg-white border-[var(--color-border)] hover:border-[var(--color-brand-secondary)] hover:shadow-md"
+                "bg-white border-[var(--color-border)] hover:border-[var(--color-brand-primary)]/40 hover:shadow-md"
     }`}>
       <div className="flex items-center gap-2 mb-3">
         <span className="text-2xl">{emoji}</span>
@@ -157,8 +165,11 @@ function SlotCard({
 
       {!done ? (
         <div className="flex flex-col gap-2">
-          <button onClick={onScan} disabled={isPending}
-            className="btn-primary w-full py-2.5 text-xs rounded-xl flex items-center gap-1.5 justify-center">
+          <button
+            onClick={onScan}
+            disabled={isPending}
+            className="btn-primary w-full py-2.5 text-xs rounded-xl flex items-center gap-1.5 justify-center"
+          >
             {isPending ? (
               <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
@@ -167,8 +178,11 @@ function SlotCard({
             ) : <span>📷</span>}
             {isPending ? "Verifying…" : "Scan QR"}
           </button>
-          <button onClick={onSkip} disabled={isPending}
-            className="w-full py-2 text-xs font-medium rounded-xl border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-alt)] active:scale-[0.98] transition-all">
+          <button
+            onClick={onSkip}
+            disabled={isPending}
+            className="w-full py-2 text-xs font-medium rounded-xl border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-alt)] active:scale-[0.98] transition-all"
+          >
             Skip {label}
           </button>
         </div>
@@ -192,12 +206,8 @@ function SkipStatsBar({ stats, slots }: { stats: SkipStats; slots: string[] }) {
         Skip quota · this month
       </p>
       <div className="flex flex-wrap gap-3">
-        {hasLunch && (
-          <SkipPill label="Lunch" used={lunchSkips} free={freeLunchRemaining} />
-        )}
-        {hasDinner && (
-          <SkipPill label="Dinner" used={dinnerSkips} free={freeDinnerRemaining} />
-        )}
+        {hasLunch  && <SkipPill label="Lunch"  used={lunchSkips}  free={freeLunchRemaining} />}
+        {hasDinner && <SkipPill label="Dinner" used={dinnerSkips} free={freeDinnerRemaining} />}
       </div>
       {projectedRollover > 0 && (
         <p className="text-xs text-green-700 bg-green-50 rounded-lg px-3 py-1.5">
@@ -214,7 +224,7 @@ function SkipStatsBar({ stats, slots }: { stats: SkipStats; slots: string[] }) {
 }
 
 function SkipPill({ label, used, free }: { label: string; used: number; free: number }) {
-  const pct = Math.min(100, (used / 4) * 100);
+  const pct   = Math.min(100, (used / 4) * 100);
   const color = used < 4 ? "bg-green-400" : "bg-red-400";
 
   return (

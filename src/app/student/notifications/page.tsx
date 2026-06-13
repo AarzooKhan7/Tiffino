@@ -8,6 +8,7 @@ const TYPE_ICON: Record<string, string> = {
   nudge:           "🔔",
   low_balance:     "💰",
   expiry_warning:  "⏰",
+  announcement:    "📢",
 };
 
 export default async function NotificationsPage() {
