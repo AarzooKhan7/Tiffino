@@ -334,7 +334,8 @@ async function seedStudent(s: StudentDef, restaurantId: string): Promise<void> {
   const tokensTotal     = 30 * s.slots.length;
   const tokensConsumed  = s.subDaysAgo * s.slots.length;
   const tokensRemaining = Math.max(0, tokensTotal - tokensConsumed + Math.floor(tokensConsumed * 0.1)); // ~10% skipped
-  const pricePaid       = 70 * 30 * s.slots.length; // base_price × 30 days
+  // Fixed plan pricing: ₹1,500 one slot / ₹3,000 both slots
+  const pricePaid       = s.slots.length >= 2 ? 3000 : 1500;
 
   const { data: sub, error: subErr } = await db
     .from("subscriptions")

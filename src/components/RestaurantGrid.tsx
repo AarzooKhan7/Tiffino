@@ -115,8 +115,8 @@ function RestaurantCard({ r }: { r: Restaurant }) {
             )}
           </div>
           <div className="text-right shrink-0">
-            <span className="text-base font-extrabold text-[var(--color-brand-secondary)]">₹{r.base_price}</span>
-            <p className="text-[10px] text-[var(--color-text-muted)] leading-none mt-0.5">per slot/day</p>
+            <span className="text-base font-extrabold text-[var(--color-brand-secondary)]">₹1,500</span>
+            <p className="text-[10px] text-[var(--color-text-muted)] leading-none mt-0.5">/ slot / month</p>
           </div>
         </div>
 

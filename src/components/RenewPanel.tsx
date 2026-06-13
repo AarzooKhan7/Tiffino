@@ -2,11 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { renewSubscription } from "@/app/subscriptions/actions";
+import { PRICE_ONE_SLOT, calcPlanPrice } from "@/lib/payment";
 
 interface Props {
   restaurantId: string;
   restaurantName: string;
-  basePrice: number;
   servesLunch: boolean;
   servesDinner: boolean;
   previousSubId: string | null;
@@ -16,7 +16,6 @@ interface Props {
 export default function RenewPanel({
   restaurantId,
   restaurantName,
-  basePrice,
   servesLunch,
   servesDinner,
   previousSubId,
@@ -36,8 +35,8 @@ export default function RenewPanel({
       prev.includes(slot) ? prev.filter((s) => s !== slot) : [...prev, slot]
     );
 
-  const pricePerMonth = basePrice * 30 * selected.length;
-  const bonusTokens = rolloverTokens > 0 ? rolloverTokens : 0;
+  const pricePerMonth = calcPlanPrice(selected);
+  const bonusTokens   = rolloverTokens > 0 ? rolloverTokens : 0;
 
   const handleRenew = () => {
     if (selected.length === 0) { setError("Select at least one slot"); return; }
@@ -97,8 +96,10 @@ export default function RenewPanel({
             }`}
           >
             <div className="text-xl mb-1">🌞</div>
-            Lunch
-            <div className="text-xs font-normal opacity-70 mt-0.5">₹{basePrice}/day</div>
+            <div className="font-bold">Lunch</div>
+            <div className="text-xs font-semibold mt-0.5">
+              ₹{PRICE_ONE_SLOT.toLocaleString()}<span className="font-normal opacity-60">/month</span>
+            </div>
           </button>
         )}
         {servesDinner && (
@@ -112,8 +113,10 @@ export default function RenewPanel({
             }`}
           >
             <div className="text-xl mb-1">🌙</div>
-            Dinner
-            <div className="text-xs font-normal opacity-70 mt-0.5">₹{basePrice}/day</div>
+            <div className="font-bold">Dinner</div>
+            <div className="text-xs font-semibold mt-0.5">
+              ₹{PRICE_ONE_SLOT.toLocaleString()}<span className="font-normal opacity-60">/month</span>
+            </div>
           </button>
         )}
       </div>

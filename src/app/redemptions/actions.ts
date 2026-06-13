@@ -2,7 +2,7 @@
 
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { todayISODate, currentMonthBounds } from "@/lib/ist";
+import { nowIST, todayISODate, currentMonthBounds } from "@/lib/ist";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -124,6 +124,22 @@ export async function skipMeal(
   if (!sub) return { ok: false, error: "Subscription not found" };
   if (sub.status !== "active") return { ok: false, error: "Subscription is not active" };
   if (!(sub.slots as string[]).includes(slot)) return { ok: false, error: `Not subscribed to ${slot}` };
+
+  // Enforce skip cutoff (server-side, IST)
+  const { data: rest } = await supabase
+    .from("restaurants")
+    .select("lunch_skip_cutoff, dinner_skip_cutoff")
+    .eq("id", sub.restaurant_id)
+    .single();
+  if (rest) {
+    const now  = nowIST();
+    const hhmm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const raw  = (slot === "lunch" ? rest.lunch_skip_cutoff : rest.dinner_skip_cutoff) as string | null;
+    const cut  = raw?.substring(0, 5);
+    if (cut && hhmm >= cut) {
+      return { ok: false, error: `Skip window closed — ${slot} cutoff is ${cut} IST` };
+    }
+  }
 
   const service = createServiceClient();
 

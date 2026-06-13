@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { calcPlanPrice, processDemoPayment } from "@/lib/payment";
 
 export interface SubscribeResult {
   ok: boolean;
@@ -56,9 +57,15 @@ export async function createSubscription(
   if (existing) return { ok: false, error: "You already have an active subscription here" };
 
   const { start, end } = calcDates();
-
   const tokensTotal = 30 * validSlots.length;
-  const pricePaid = restaurant.base_price * 30 * validSlots.length;
+  const pricePaid   = calcPlanPrice(validSlots);
+
+  // ── PAYMENT ──────────────────────────────────────────────────────────────
+  // Demo: completes instantly. Swap processDemoPayment() for a real gateway.
+  // See src/lib/payment.ts for the integration checklist.
+  const payment = await processDemoPayment(pricePaid, user.id, { restaurantId, slots: validSlots });
+  if (!payment.ok) return { ok: false, error: payment.error ?? "Payment failed" };
+  // ─────────────────────────────────────────────────────────────────────────
 
   const service = createServiceClient();
   const { data: sub, error } = await service
@@ -144,7 +151,13 @@ export async function renewSubscription(
 
   const { start, end } = calcDates();
   const tokensBase = 30 * validSlots.length;
-  const pricePaid = Number(restaurant.base_price) * 30 * validSlots.length;
+  const pricePaid  = calcPlanPrice(validSlots);
+
+  // ── PAYMENT ──────────────────────────────────────────────────────────────
+  // Demo: completes instantly. Swap processDemoPayment() for a real gateway.
+  const payment = await processDemoPayment(pricePaid, user.id, { restaurantId, slots: validSlots });
+  if (!payment.ok) return { ok: false, error: payment.error ?? "Payment failed" };
+  // ─────────────────────────────────────────────────────────────────────────
 
   const { data: sub, error } = await service
     .from("subscriptions")

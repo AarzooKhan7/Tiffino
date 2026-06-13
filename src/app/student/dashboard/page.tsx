@@ -48,7 +48,7 @@ export default async function StudentDashboard() {
       .maybeSingle(),
     supabase
       .from("subscriptions")
-      .select("id, rollover_in, end_date, slots, restaurant:restaurant_id(id, name, area, base_price, serves_lunch, serves_dinner)")
+      .select("id, rollover_in, end_date, slots, restaurant:restaurant_id(id, name, area, serves_lunch, serves_dinner)")
       .eq("student_id", user.id)
       .eq("status", "expired")
       .order("end_date", { ascending: false })
@@ -107,7 +107,7 @@ export default async function StudentDashboard() {
     : 0;
 
   // Expired subscription details for the RenewPanel
-  type ExpiredRestaurant = { id: string; name: string; area: string; base_price: number; serves_lunch: boolean; serves_dinner: boolean };
+  type ExpiredRestaurant = { id: string; name: string; area: string; serves_lunch: boolean; serves_dinner: boolean };
   const expiredRestaurant = expiredSub
     ? (Array.isArray(expiredSub.restaurant) ? expiredSub.restaurant[0] : expiredSub.restaurant) as ExpiredRestaurant | null
     : null;
@@ -288,7 +288,6 @@ export default async function StudentDashboard() {
           <RenewPanel
             restaurantId={expiredRestaurant.id}
             restaurantName={expiredRestaurant.name}
-            basePrice={expiredRestaurant.base_price}
             servesLunch={expiredRestaurant.serves_lunch}
             servesDinner={expiredRestaurant.serves_dinner}
             previousSubId={expiredSub.id as string}

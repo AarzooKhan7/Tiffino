@@ -78,7 +78,7 @@ export default function DailyActions({ subscriptionId, slots, todayStatuses, ski
     <div className="space-y-3">
       {/* Toast */}
       {toast && (
-        <div className={`fixed top-4 left-1/2 z-50 px-4 py-3 rounded-xl shadow-xl text-sm font-semibold toast-enter whitespace-nowrap ${
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-xl text-sm font-semibold toast-enter whitespace-nowrap ${
           toast.ok ? "bg-green-600 text-white" : "bg-red-600 text-white"
         }`}>
           {toast.ok ? "✓ " : "✕ "}{toast.msg}

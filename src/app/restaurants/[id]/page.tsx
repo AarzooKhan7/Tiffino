@@ -6,7 +6,7 @@ import SubscribePanel from "@/components/SubscribePanel";
 import AppHeader from "@/components/AppHeader";
 import { restaurantCover, restaurantRating } from "@/lib/food-images";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 
@@ -84,9 +84,12 @@ export default async function PublicRestaurantPage({ params }: { params: Promise
       <div className="max-w-3xl mx-auto px-4 py-5 space-y-5">
         {/* Info strip */}
         <div className="bg-white rounded-[var(--radius-card)] card-shadow px-5 py-4 flex flex-wrap gap-4 items-center">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl font-extrabold text-[var(--color-brand-secondary)]">₹{restaurant.base_price}</span>
-            <span className="text-sm text-[var(--color-text-muted)]">per slot / day</span>
+          <div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-extrabold text-[var(--color-brand-secondary)]">₹1,500</span>
+              <span className="text-sm text-[var(--color-text-muted)]">/ slot / month</span>
+            </div>
+            <p className="text-xs text-[var(--color-text-muted)]">₹3,000 for both slots</p>
           </div>
           <div className="flex gap-2 ml-auto flex-wrap">
             {restaurant.serves_lunch  && <span className="text-xs border border-[var(--color-border)] rounded-full px-3 py-1 text-[var(--color-text-secondary)] font-medium">🌞 Lunch</span>}
@@ -98,7 +101,6 @@ export default async function PublicRestaurantPage({ params }: { params: Promise
           <SubscribePanel
             restaurantId={restaurant.id}
             restaurantName={restaurant.name}
-            basePrice={restaurant.base_price}
             servesLunch={restaurant.serves_lunch}
             servesDinner={restaurant.serves_dinner}
           />
