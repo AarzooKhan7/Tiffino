@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { randomUUID } from "crypto";
+import QRCode from "qrcode";
+import RestaurantQR from "@/components/RestaurantQR";
 
 function todayIST(): number {
   return (new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })).getDay() + 6) % 7;
@@ -23,13 +26,31 @@ export default async function RestaurantDashboard() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/restaurant");
 
-  // Parallel: profile + restaurant in one round trip
+  // Parallel: profile + restaurant
   const [{ data: profile }, { data: restaurant }] = await Promise.all([
     supabase.from("profiles").select("name, role").eq("id", user.id).single(),
-    supabase.from("restaurants").select("id, name, area, base_price, serves_lunch, serves_dinner").eq("owner_id", user.id).single(),
+    supabase.from("restaurants").select("id, name, area, base_price, serves_lunch, serves_dinner, qr_token").eq("owner_id", user.id).single(),
   ]);
 
   if (!profile || profile.role !== "restaurant") redirect("/");
+
+  // Ensure restaurant has a qr_token; generate one if missing
+  let qrToken = restaurant?.qr_token as string | null;
+  if (restaurant && !qrToken) {
+    qrToken = randomUUID();
+    const service = createServiceClient();
+    await service.from("restaurants").update({ qr_token: qrToken }).eq("id", restaurant.id);
+  }
+
+  // Generate QR code as base64 PNG data URL (server-side)
+  let qrDataUrl: string | null = null;
+  if (qrToken) {
+    qrDataUrl = await QRCode.toDataURL(qrToken, {
+      width: 300,
+      margin: 2,
+      color: { dark: "#1a1a1a", light: "#ffffff" },
+    });
+  }
 
   const today = todayIST();
 
@@ -77,6 +98,10 @@ export default async function RestaurantDashboard() {
             Set up restaurant →
           </Link>
         </div>
+      )}
+
+      {restaurant && qrDataUrl && (
+        <RestaurantQR qrDataUrl={qrDataUrl} restaurantName={restaurant.name} />
       )}
 
       {restaurant && (

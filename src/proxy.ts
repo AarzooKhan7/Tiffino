@@ -60,19 +60,9 @@ export async function proxy(request: NextRequest) {
 
   const role = profile?.role as "student" | "restaurant" | undefined;
 
-  // No profile yet → onboarding
+  // No profile yet — registration must have failed; send back to landing
   if (!role) {
-    if (!pathname.startsWith("/onboarding")) {
-      return NextResponse.redirect(new URL("/onboarding", request.url));
-    }
-    return response;
-  }
-
-  // Onboarding already done → skip it
-  if (pathname.startsWith("/onboarding")) {
-    return NextResponse.redirect(
-      new URL(role === "student" ? "/student/dashboard" : "/restaurant/dashboard", request.url)
-    );
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
   // ── Cross-role guard ──────────────────────────────────────────────────────────

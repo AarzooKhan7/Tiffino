@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { restaurantCover } from "@/lib/food-images";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
+import DailyActions from "@/components/DailyActions";
+import { getSkipStats } from "@/app/redemptions/actions";
+import { todayISODate } from "@/lib/ist";
 
 export const dynamic = "force-dynamic";
 
 const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-const DAYS_FULL = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 
 function todayIST(): number {
   return (new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })).getDay() + 6) % 7;
@@ -21,6 +22,8 @@ function extractDish(raw: unknown): Dish | null {
   const obj = d as Record<string, unknown>;
   return { name: String(obj.name ?? ""), diet_type: String(obj.diet_type ?? "") };
 }
+
+type SlotStatus = "pending" | "taken" | "skipped";
 
 export default async function StudentDashboard() {
   const supabase = await createClient();
@@ -42,21 +45,44 @@ export default async function StudentDashboard() {
   if (!profile || profile.role !== "student") redirect("/auth/student");
 
   const today = todayIST();
+  const todayDate = todayISODate();
   const restaurant = subscription?.restaurant as { id: string; name: string; area: string } | null | undefined;
+  const slots = (subscription?.slots as string[] | null) ?? [];
 
+  // Fetch today's redemptions + week menu + skip stats in parallel
+  let todayStatuses: { lunch: SlotStatus; dinner: SlotStatus } = { lunch: "pending", dinner: "pending" };
   let weekMenu: Record<number, { lunch?: Dish | null; dinner?: Dish | null }> = {};
-  if (restaurant?.id) {
-    const { data: menuRows } = await supabase
-      .from("weekly_menu")
-      .select("day_of_week, meal_type, dish:dish_id(name, diet_type)")
-      .eq("restaurant_id", restaurant.id);
+  let skipStats = { lunchSkips: 0, dinnerSkips: 0, freeLunchRemaining: 4, freeDinnerRemaining: 4, tokensAtRisk: 0, projectedRollover: 0 };
+
+  if (subscription?.id && restaurant?.id) {
+    const service = createServiceClient();
+
+    const [{ data: todayRedemptions }, { data: menuRows }, stats] = await Promise.all([
+      service
+        .from("redemptions")
+        .select("meal_type, status")
+        .eq("subscription_id", subscription.id)
+        .eq("meal_date", todayDate),
+      supabase
+        .from("weekly_menu")
+        .select("day_of_week, meal_type, dish:dish_id(name, diet_type)")
+        .eq("restaurant_id", restaurant.id),
+      getSkipStats(subscription.id),
+    ]);
+
+    skipStats = stats;
+
+    for (const row of todayRedemptions ?? []) {
+      if (row.meal_type === "lunch")  todayStatuses.lunch  = row.status as SlotStatus;
+      if (row.meal_type === "dinner") todayStatuses.dinner = row.status as SlotStatus;
+    }
+
     for (const row of menuRows ?? []) {
       if (!weekMenu[row.day_of_week]) weekMenu[row.day_of_week] = {};
       (weekMenu[row.day_of_week] as Record<string, unknown>)[row.meal_type] = extractDish(row.dish);
     }
   }
 
-  const slots = (subscription?.slots as string[] | null) ?? [];
   const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
   const endDateStr = subscription?.end_date as string | null;
   const daysLeft = endDateStr
@@ -66,8 +92,6 @@ export default async function StudentDashboard() {
   const tokenPct = subscription
     ? Math.round((Number(subscription.tokens_remaining) / Number(subscription.tokens_total)) * 100)
     : 0;
-
-  const cover = restaurant ? restaurantCover(restaurant.id) : null;
 
   return (
     <div className="space-y-5">
@@ -93,12 +117,11 @@ export default async function StudentDashboard() {
         </div>
       </div>
 
-      {/* Token wallet card (gradient) */}
       {subscription && restaurant ? (
         <>
+          {/* Token wallet card */}
           <div className="relative rounded-[var(--radius-card)] overflow-hidden text-white"
             style={{ background: "linear-gradient(135deg, #e23744 0%, #fc8019 100%)" }}>
-            {/* Decorative circles */}
             <div className="absolute -top-8 -right-8 w-40 h-40 bg-white/10 rounded-full" />
             <div className="absolute -bottom-12 -left-8 w-48 h-48 bg-white/10 rounded-full" />
 
@@ -117,7 +140,6 @@ export default async function StudentDashboard() {
                 </div>
               </div>
 
-              {/* Progress bar */}
               <div className="mt-4 h-2 bg-white/20 rounded-full overflow-hidden">
                 <div className="h-full bg-white/80 rounded-full transition-all" style={{ width: `${tokenPct}%` }} />
               </div>
@@ -135,6 +157,17 @@ export default async function StudentDashboard() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Today's actions */}
+          <div>
+            <h2 className="text-base font-bold text-[var(--color-text-primary)] mb-3">Today&apos;s meals</h2>
+            <DailyActions
+              subscriptionId={subscription.id}
+              slots={slots}
+              todayStatuses={todayStatuses}
+              skipStats={skipStats}
+            />
           </div>
 
           {/* Plan details strip */}
@@ -155,8 +188,6 @@ export default async function StudentDashboard() {
           {/* 7-day horizontal calendar */}
           <div>
             <h2 className="text-base font-bold text-[var(--color-text-primary)] mb-3">This week&apos;s menu</h2>
-
-            {/* Day tabs — horizontal scroll */}
             <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory">
               {Array.from({ length: 7 }).map((_, offset) => {
                 const dayIdx = (today + offset) % 7;
@@ -168,7 +199,6 @@ export default async function StudentDashboard() {
                         ? "border-[var(--color-brand-primary)] card-shadow"
                         : "border-[var(--color-border)] card-shadow-sm"
                     }`}>
-                    {/* Day header */}
                     <div className={`px-3 py-2 text-xs font-bold flex items-center justify-between ${
                       isToday ? "bg-[var(--color-brand-primary)] text-white" : "bg-white text-[var(--color-text-muted)]"
                     }`}>
@@ -191,9 +221,7 @@ export default async function StudentDashboard() {
           </div>
         </>
       ) : (
-        /* No subscription */
         <div>
-          {/* Empty state with cover suggestions */}
           <div className="bg-white rounded-[var(--radius-card)] card-shadow overflow-hidden">
             <div className="relative h-32 bg-gradient-to-r from-red-50 to-orange-50">
               <div className="absolute inset-0 flex items-center justify-center">
