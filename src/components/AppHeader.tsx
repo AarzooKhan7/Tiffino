@@ -1,23 +1,22 @@
 import Link from "next/link";
 
 interface Props {
-  /** Pass the signed-in user's name to show avatar; omit for guest header */
   userName?: string | null;
-  /** Role determines which "my plan" link to show */
   role?: "student" | "restaurant" | null;
 }
 
 export default function AppHeader({ userName, role }: Props) {
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-[var(--color-border)] card-shadow-sm">
-      <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[var(--color-border)] card-shadow-sm">
+      <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
+
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-1.5 shrink-0">
-          <span className="text-xl font-extrabold tracking-tight text-[var(--color-brand-primary)]">
-            Tiffino
+        <Link href="/" className="flex items-center gap-2 shrink-0 group">
+          <span className="w-8 h-8 rounded-xl bg-[var(--color-brand-primary)] flex items-center justify-center text-sm font-black text-white shadow-sm group-hover:scale-105 transition-transform">
+            T
           </span>
-          <span className="hidden sm:block text-xs font-medium text-[var(--color-text-muted)] mt-0.5">
-            daily mess, sorted
+          <span className="text-lg font-black tracking-tight text-[var(--color-text-primary)]">
+            tiffino
           </span>
         </Link>
 
@@ -27,37 +26,40 @@ export default function AppHeader({ userName, role }: Props) {
             <>
               <Link
                 href={role === "student" ? "/student/dashboard" : "/restaurant/dashboard"}
-                className="hidden sm:flex items-center gap-1.5 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+                className="hidden sm:flex items-center gap-2.5 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors py-1.5 px-3 rounded-full hover:bg-[var(--color-surface-alt)]"
               >
-                <span className="w-7 h-7 rounded-full bg-[var(--color-brand-primary)] text-white text-xs font-bold flex items-center justify-center uppercase">
-                  {userName.charAt(0)}
-                </span>
-                <span className="max-w-[100px] truncate font-medium">{userName}</span>
+                <Avatar name={userName} size="sm" />
+                <span className="max-w-[110px] truncate font-semibold">{userName}</span>
               </Link>
-              {/* Mobile: just avatar */}
               <Link
                 href={role === "student" ? "/student/dashboard" : "/restaurant/dashboard"}
-                className="sm:hidden w-8 h-8 rounded-full bg-[var(--color-brand-primary)] text-white text-sm font-bold flex items-center justify-center uppercase"
+                className="sm:hidden"
+                aria-label="My account"
               >
-                {userName.charAt(0)}
+                <Avatar name={userName} size="md" />
               </Link>
             </>
           ) : (
-            <>
-              <Link href="/auth/student" className="btn-primary text-xs px-3 py-2 hidden sm:inline-flex">
+            <div className="flex items-center gap-2">
+              <Link href="/auth/student" className="btn-primary text-xs px-4 py-2">
                 Sign in
               </Link>
-              <Link href="/auth/restaurant" className="btn-ghost text-xs px-3 py-2 hidden sm:inline-flex">
-                Mess owner
+              <Link href="/auth/restaurant" className="hidden sm:inline-flex btn-ghost text-xs px-4 py-2">
+                List your mess
               </Link>
-              {/* Mobile: single sign in */}
-              <Link href="/auth/student" className="btn-primary text-xs px-3 py-2 sm:hidden">
-                Sign in
-              </Link>
-            </>
+            </div>
           )}
         </div>
       </div>
     </header>
+  );
+}
+
+function Avatar({ name, size }: { name: string; size: "sm" | "md" }) {
+  const s = size === "sm" ? "w-7 h-7 text-xs" : "w-8 h-8 text-sm";
+  return (
+    <span className={`${s} rounded-full bg-gradient-to-br from-[var(--color-brand-primary)] to-[var(--color-brand-deep)] text-white font-bold flex items-center justify-center uppercase shrink-0`}>
+      {name.charAt(0)}
+    </span>
   );
 }
