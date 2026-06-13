@@ -25,8 +25,6 @@ export async function upsertRestaurant(formData: FormData) {
     dinner_price:       Number(formData.get("dinner_price")) || 1500,
     serves_lunch,
     serves_dinner,
-    lunch_skip_cutoff:  serves_lunch  ? String(formData.get("lunch_skip_cutoff"))  : null,
-    dinner_skip_cutoff: serves_dinner ? String(formData.get("dinner_skip_cutoff")) : null,
   };
 
   const { data: existing } = await supabase
@@ -47,5 +45,5 @@ export async function upsertRestaurant(formData: FormData) {
   }
 
   if (dbError) throw new Error(dbError.message);
-  redirect("/restaurant/dashboard");
+  redirect("/restaurant/setup?saved=1");
 }
