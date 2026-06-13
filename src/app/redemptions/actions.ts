@@ -279,7 +279,6 @@ export async function resolveStaleRedemptions(): Promise<{ resolved: number; err
             meal_type:       slot,
             status:          "skipped",
             claimed:         false,
-            resolved_at:     new Date().toISOString(),
           });
           if (error) errors.push(`${sub.id}/${dateStr}/${slot}: ${error.message}`);
           else resolved++;

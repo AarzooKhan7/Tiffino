@@ -112,8 +112,8 @@ export default function RenewPanel({
             onClick={() => toggle("dinner")}
             className={`flex-1 rounded-xl border-2 px-4 py-3 text-sm font-semibold transition-all active:scale-95 ${
               selected.includes("dinner")
-                ? "bg-indigo-50 border-indigo-400 text-indigo-600"
-                : "bg-white border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-indigo-400"
+                ? "bg-[var(--color-surface-alt)] border-[var(--color-brand-primary)] text-[var(--color-brand-primary)]"
+                : "bg-white border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-brand-primary)]"
             }`}
           >
             <div className="text-xl mb-1">🌙</div>
