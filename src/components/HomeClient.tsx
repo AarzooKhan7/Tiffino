@@ -23,21 +23,21 @@ interface Props {
   isLoggedIn: boolean;
 }
 
-const SLOT_FILTERS = [
-  { id: "all",    label: "All" },
+const FILTERS = [
+  { id: "all",    label: "All messes" },
   { id: "lunch",  label: "🌞 Lunch" },
   { id: "dinner", label: "🌙 Dinner" },
   { id: "top",    label: "⭐ Top rated" },
 ];
 
 export default function HomeClient({ restaurants, isLoggedIn }: Props) {
-  const [query, setQuery]       = useState("");
-  const [slot, setSlot]         = useState("all");
-  const [areaFilter, setArea]   = useState("");
+  const [query, setQuery]     = useState("");
+  const [slot, setSlot]       = useState("all");
+  const [areaFilter, setArea] = useState("");
 
   const areas = useMemo(
     () => Array.from(new Set(restaurants.map((r) => r.area).filter(Boolean) as string[])).sort(),
-    [restaurants]
+    [restaurants],
   );
 
   const filtered = useMemo(() => {
@@ -45,7 +45,7 @@ export default function HomeClient({ restaurants, isLoggedIn }: Props) {
     if (query.trim()) {
       const q = query.toLowerCase();
       list = list.filter(
-        (r) => r.name.toLowerCase().includes(q) || (r.area ?? "").toLowerCase().includes(q)
+        (r) => r.name.toLowerCase().includes(q) || (r.area ?? "").toLowerCase().includes(q),
       );
     }
     if (slot === "lunch")  list = list.filter((r) => r.serves_lunch);
@@ -57,9 +57,8 @@ export default function HomeClient({ restaurants, isLoggedIn }: Props) {
 
   return (
     <>
-      {/* ── Hero ── */}
-      {/* Pattern: Zomato centers hero around search + location. We adapt with a strong headline + inline search bar. */}
-      <section className="relative overflow-hidden" style={{ minHeight: 320 }}>
+      {/* ── Hero ──────────────────────────────────────────────────── */}
+      <section className="relative overflow-hidden" style={{ minHeight: 300 }}>
         <Image
           src={HERO_BG}
           alt="Indian food spread"
@@ -68,29 +67,31 @@ export default function HomeClient({ restaurants, isLoggedIn }: Props) {
           priority
           unoptimized
         />
-        {/* Gradient: dark top (for header contrast) → lighter mid → dark bottom */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/35 to-black/75" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/30 to-black/80" />
 
-        <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 pt-12 pb-10 gap-5">
+        <div className="relative z-10 flex flex-col items-center justify-center text-center px-5 pt-10 pb-12 gap-5">
+          {/* Badge */}
           <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/25 rounded-full px-4 py-1.5">
             <span className="text-base">🍱</span>
             <span className="text-white text-xs font-semibold tracking-wide">30-day meal subscriptions</span>
           </div>
 
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight drop-shadow-lg">
-              Find your daily mess
+          {/* Headline */}
+          <div className="space-y-2">
+            <h1 className="text-[28px] sm:text-4xl font-extrabold text-white tracking-tight leading-tight drop-shadow-lg">
+              Your daily mess,<br className="sm:hidden" /> sorted.
             </h1>
-            <p className="text-white/75 text-sm sm:text-base mt-2 max-w-xs mx-auto">
-              Subscribe once, scan daily — home-style food, always on time.
+            <p className="text-white/75 text-sm sm:text-base max-w-xs mx-auto leading-relaxed">
+              Subscribe once, scan daily — home-style food, every single day.
             </p>
           </div>
 
-          {/* Search bar in hero — Zomato pattern */}
+          {/* Search */}
           <div className="w-full max-w-sm relative">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <circle cx="11" cy="11" r="7" /><path strokeLinecap="round" d="M21 21l-4.35-4.35" />
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="7" />
+                <path strokeLinecap="round" d="M21 21l-4.35-4.35" />
               </svg>
             </span>
             <input
@@ -98,27 +99,26 @@ export default function HomeClient({ restaurants, isLoggedIn }: Props) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search messes or areas…"
-              className="w-full pl-11 pr-4 py-3.5 rounded-2xl text-sm font-medium text-[var(--color-text-primary)] bg-white placeholder-gray-400 shadow-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+              className="w-full pl-11 pr-10 py-3.5 rounded-2xl text-sm font-medium text-[var(--color-text-primary)] bg-white placeholder-gray-400 shadow-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)] transition-shadow"
             />
             {query && (
               <button
                 onClick={() => setQuery("")}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 text-xs transition-colors"
               >
                 ✕
               </button>
             )}
           </div>
 
-          {/* CTA for non-logged-in users */}
+          {/* Guest CTAs */}
           {!isLoggedIn && (
             <div className="flex items-center gap-3 flex-wrap justify-center">
-              <Link href="/auth/student"
-                className="btn-primary px-6 py-2.5 text-sm shadow-lg">
+              <Link href="/auth/student" className="btn-primary px-6 py-2.5 text-sm shadow-lg rounded-xl">
                 Sign in as student
               </Link>
               <Link href="/auth/restaurant"
-                className="inline-flex items-center justify-center bg-white/15 backdrop-blur-sm border border-white/30 text-white font-semibold text-sm px-5 py-2.5 rounded-[var(--radius-btn)] hover:bg-white/25 transition-colors">
+                className="inline-flex items-center justify-center bg-white/15 backdrop-blur-sm border border-white/30 text-white font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-white/25 transition-colors">
                 List your mess
               </Link>
             </div>
@@ -126,101 +126,118 @@ export default function HomeClient({ restaurants, isLoggedIn }: Props) {
         </div>
       </section>
 
-      {/* ── Stats bar ── */}
+      {/* ── Stats bar ─────────────────────────────────────────────── */}
       <div className="bg-white border-b border-[var(--color-border)]">
-        <div className="max-w-5xl mx-auto px-4 py-3.5 flex items-center justify-center gap-6 sm:gap-10 flex-wrap text-center">
+        <div className="max-w-5xl mx-auto px-4 py-3.5 flex items-center justify-center gap-6 sm:gap-12 flex-wrap text-center">
           {[
             { v: `${restaurants.length}+`, l: "Messes" },
-            { v: "₹40–120", l: "per slot / day" },
+            { v: "₹40–120", l: "per slot/day" },
             { v: "30 days", l: "per plan" },
-            { v: "QR scan", l: "to mark meal" },
+            { v: "QR scan", l: "daily check-in" },
           ].map(({ v, l }) => (
             <div key={l}>
               <p className="text-sm font-extrabold text-[var(--color-brand-primary)]">{v}</p>
-              <p className="text-[11px] text-[var(--color-text-muted)]">{l}</p>
+              <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5 font-medium">{l}</p>
             </div>
           ))}
         </div>
       </div>
 
-      {/* ── Filter chips — Swiggy pattern: horizontal scroll categories ── */}
+      {/* ── Filter chips ──────────────────────────────────────────── */}
       <div className="bg-white border-b border-[var(--color-border)] sticky top-14 z-30">
         <div className="max-w-5xl mx-auto px-4">
-          <div className="flex gap-2 overflow-x-auto py-3 no-scrollbar -mx-1 px-1">
-            {SLOT_FILTERS.map(({ id, label }) => (
-              <button
-                key={id}
-                onClick={() => { setSlot(id); setArea(""); }}
-                className={`shrink-0 text-xs font-semibold px-3.5 py-2 rounded-full border transition-all ${
-                  slot === id && !areaFilter
-                    ? "bg-[var(--color-brand-primary)] text-white border-[var(--color-brand-primary)] shadow-sm"
-                    : "bg-white text-[var(--color-text-secondary)] border-[var(--color-border)] hover:border-[var(--color-brand-primary)] hover:text-[var(--color-brand-primary)]"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+          <div className="flex gap-2 overflow-x-auto py-3.5 no-scrollbar">
+            {FILTERS.map(({ id, label }) => {
+              const active = slot === id && !areaFilter;
+              return (
+                <button
+                  key={id}
+                  onClick={() => { setSlot(id); setArea(""); }}
+                  className={`shrink-0 text-xs font-semibold px-4 py-2 rounded-full border transition-all whitespace-nowrap ${
+                    active
+                      ? "bg-[var(--color-brand-primary)] text-white border-[var(--color-brand-primary)] shadow-sm scale-[1.02]"
+                      : "bg-white text-[var(--color-text-secondary)] border-[var(--color-border-dark)] hover:border-[var(--color-brand-primary)] hover:text-[var(--color-brand-primary)]"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
 
-            {/* Divider */}
             {areas.length > 0 && (
               <div className="shrink-0 w-px bg-[var(--color-border)] mx-1 self-stretch" />
             )}
 
-            {/* Area chips */}
-            {areas.map((area) => (
-              <button
-                key={area}
-                onClick={() => { setArea((a) => a === area ? "" : area); setSlot("all"); }}
-                className={`shrink-0 text-xs font-semibold px-3.5 py-2 rounded-full border transition-all ${
-                  areaFilter === area
-                    ? "bg-[var(--color-brand-secondary)] text-white border-[var(--color-brand-secondary)] shadow-sm"
-                    : "bg-white text-[var(--color-text-secondary)] border-[var(--color-border)] hover:border-[var(--color-brand-secondary)] hover:text-[var(--color-brand-secondary)]"
-                }`}
-              >
-                📍 {area}
-              </button>
-            ))}
+            {areas.map((area) => {
+              const active = areaFilter === area;
+              return (
+                <button
+                  key={area}
+                  onClick={() => { setArea((a) => a === area ? "" : area); setSlot("all"); }}
+                  className={`shrink-0 text-xs font-semibold px-4 py-2 rounded-full border transition-all whitespace-nowrap ${
+                    active
+                      ? "bg-[var(--color-brand-secondary)] text-white border-[var(--color-brand-secondary)] shadow-sm"
+                      : "bg-white text-[var(--color-text-secondary)] border-[var(--color-border-dark)] hover:border-[var(--color-brand-secondary)] hover:text-[var(--color-brand-secondary)]"
+                  }`}
+                >
+                  📍 {area}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* ── Restaurant grid ── */}
-      <section className="max-w-5xl mx-auto px-4 py-6" id="messes">
+      {/* ── Restaurant list ───────────────────────────────────────── */}
+      <section className="max-w-5xl mx-auto px-4 py-5" id="messes">
         <div className="flex items-baseline justify-between mb-4">
-          <h2 className="text-lg font-bold text-[var(--color-text-primary)]">
-            {areaFilter ? `Messes in ${areaFilter}` : slot === "top" ? "Top rated messes" : "Messes near you"}
+          <h2 className="text-base font-bold text-[var(--color-text-primary)]">
+            {areaFilter
+              ? `Messes in ${areaFilter}`
+              : slot === "top"
+              ? "Top rated messes"
+              : "Messes near you"}
           </h2>
-          <span className="text-xs text-[var(--color-text-muted)]">
+          <span className="text-xs text-[var(--color-text-muted)] font-medium">
             {filtered.length} {filtered.length === 1 ? "result" : "results"}
           </span>
         </div>
         <RestaurantGrid restaurants={filtered} />
       </section>
 
-      {/* ── How it works ── */}
-      <section className="bg-white border-t border-[var(--color-border)] py-10">
-        <div className="max-w-4xl mx-auto px-4">
-          <h2 className="text-lg font-bold text-[var(--color-text-primary)] text-center mb-7">How Tiffino works</h2>
-          <div className="grid grid-cols-3 gap-4 sm:gap-8">
+      {/* ── How it works ──────────────────────────────────────────── */}
+      <section className="bg-white border-t border-[var(--color-border)] py-12">
+        <div className="max-w-4xl mx-auto px-5">
+          <p className="text-xs font-bold text-[var(--color-brand-primary)] uppercase tracking-widest text-center mb-2">Simple as 1-2-3</p>
+          <h2 className="text-xl font-extrabold text-[var(--color-text-primary)] text-center mb-8">How Tiffino works</h2>
+          <div className="grid grid-cols-3 gap-6 sm:gap-10">
             {[
               { emoji: "🔍", title: "Browse", desc: "Find a local mess with your preferred slots and diet." },
               { emoji: "💳", title: "Subscribe", desc: "Pick lunch, dinner, or both. Pay once, eat 30 days." },
               { emoji: "📱", title: "Scan & eat", desc: "Tap 'Scan QR' each meal. Your token is your pass." },
-            ].map(({ emoji, title, desc }) => (
-              <div key={title} className="flex flex-col items-center gap-2 text-center">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[var(--color-surface-alt)] flex items-center justify-center text-xl sm:text-2xl">
-                  {emoji}
+            ].map(({ emoji, title, desc }, i) => (
+              <div key={title} className="flex flex-col items-center gap-3 text-center">
+                <div className="relative">
+                  <div className="w-14 h-14 rounded-2xl bg-[var(--color-surface-alt)] flex items-center justify-center text-2xl shadow-sm">
+                    {emoji}
+                  </div>
+                  {i < 2 && (
+                    <span className="hidden sm:block absolute top-7 -right-[3.25rem] text-[var(--color-text-muted)] text-lg">→</span>
+                  )}
                 </div>
-                <h3 className="font-bold text-sm sm:text-base text-[var(--color-text-primary)]">{title}</h3>
-                <p className="text-xs sm:text-sm text-[var(--color-text-muted)] leading-relaxed">{desc}</p>
+                <div>
+                  <h3 className="font-bold text-sm text-[var(--color-text-primary)]">{title}</h3>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-1 leading-relaxed">{desc}</p>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <footer className="border-t border-[var(--color-border)] py-5 text-center text-xs text-[var(--color-text-muted)]">
-        © {new Date().getFullYear()} Tiffino · Made for students
+      <footer className="border-t border-[var(--color-border)] py-6 text-center text-xs text-[var(--color-text-muted)]">
+        <span className="font-bold text-[var(--color-text-secondary)]">tiffino</span>
+        {" "}· © {new Date().getFullYear()} · Made for students 🍱
       </footer>
     </>
   );
