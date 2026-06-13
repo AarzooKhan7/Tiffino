@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import DailyActions from "@/components/DailyActions";
+import RenewPanel from "@/components/RenewPanel";
 import { getSkipStats } from "@/app/redemptions/actions";
 import { nowIST } from "@/lib/ist";
 
@@ -9,11 +10,10 @@ export const dynamic = "force-dynamic";
 
 const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
-// Single IST snapshot per render — avoids midnight-straddle inconsistency
 function getISTSnapshot(): { dayIndex: number; dateStr: string } {
   const n = nowIST();
   return {
-    dayIndex: (n.getDay() + 6) % 7,     // 0=Mon … 6=Sun
+    dayIndex: (n.getDay() + 6) % 7,
     dateStr:  n.toISOString().slice(0, 10),
   };
 }
@@ -35,7 +35,8 @@ export default async function StudentDashboard() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/student");
 
-  const [{ data: profile }, { data: subscription }] = await Promise.all([
+  // Fetch active subscription + most recent expired subscription in parallel
+  const [{ data: profile }, { data: subscription }, { data: expiredSub }] = await Promise.all([
     supabase.from("profiles").select("name, location, diet_pref, role").eq("id", user.id).single(),
     supabase
       .from("subscriptions")
@@ -45,16 +46,23 @@ export default async function StudentDashboard() {
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    supabase
+      .from("subscriptions")
+      .select("id, rollover_in, end_date, slots, restaurant:restaurant_id(id, name, area, base_price, serves_lunch, serves_dinner)")
+      .eq("student_id", user.id)
+      .eq("status", "expired")
+      .order("end_date", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   if (!profile || profile.role !== "student") redirect("/auth/student");
 
-  // Single consistent IST snapshot — avoids midnight straddle
   const { dayIndex: today, dateStr: todayDate } = getISTSnapshot();
   const restaurant = subscription?.restaurant as { id: string; name: string; area: string } | null | undefined;
   const slots = (subscription?.slots as string[] | null) ?? [];
 
-  // Fetch today's redemptions + week menu + skip stats in parallel
+  // Per-slot data only needed when there is an active subscription
   let todayStatuses: { lunch: SlotStatus; dinner: SlotStatus } = { lunch: "pending", dinner: "pending" };
   let weekMenu: Record<number, { lunch?: Dish | null; dinner?: Dish | null }> = {};
   let skipStats = { lunchSkips: 0, dinnerSkips: 0, freeLunchRemaining: 4, freeDinnerRemaining: 4, tokensAtRisk: 0, projectedRollover: 0 };
@@ -98,6 +106,12 @@ export default async function StudentDashboard() {
     ? Math.round((Number(subscription.tokens_remaining) / Number(subscription.tokens_total)) * 100)
     : 0;
 
+  // Expired subscription details for the RenewPanel
+  type ExpiredRestaurant = { id: string; name: string; area: string; base_price: number; serves_lunch: boolean; serves_dinner: boolean };
+  const expiredRestaurant = expiredSub
+    ? (Array.isArray(expiredSub.restaurant) ? expiredSub.restaurant[0] : expiredSub.restaurant) as ExpiredRestaurant | null
+    : null;
+
   return (
     <div className="space-y-5 page-fade">
       {/* Greeting */}
@@ -108,13 +122,15 @@ export default async function StudentDashboard() {
         </h1>
         <div className="flex flex-wrap gap-2 mt-2">
           {profile.location && (
-            <span className="text-xs border border-[var(--color-border)] rounded-full px-2.5 py-1 text-[var(--color-text-secondary)]">📍 {profile.location}</span>
+            <span className="text-xs border border-[var(--color-border)] rounded-full px-2.5 py-1 text-[var(--color-text-secondary)]">
+              📍 {profile.location}
+            </span>
           )}
           {profile.diet_pref && (
             <span className={`text-xs rounded-full px-2.5 py-1 font-medium ${
-              profile.diet_pref === "veg" ? "bg-green-50 text-green-700 border border-green-200" :
+              profile.diet_pref === "veg"    ? "bg-green-50 text-green-700 border border-green-200" :
               profile.diet_pref === "nonveg" ? "bg-red-50 text-red-700 border border-red-200" :
-              "bg-orange-50 text-orange-700 border border-orange-200"
+                                               "bg-orange-50 text-orange-700 border border-orange-200"
             }`}>
               {profile.diet_pref === "veg" ? "🥦 Veg" : profile.diet_pref === "nonveg" ? "🍗 Non-veg" : "🍱 Mix"}
             </span>
@@ -124,9 +140,29 @@ export default async function StudentDashboard() {
 
       {subscription && restaurant ? (
         <>
+          {/* Near-expiry warning banner */}
+          {daysLeft <= 5 && daysLeft > 0 && (
+            <div className="rounded-[var(--radius-card)] bg-amber-50 border border-amber-200 px-5 py-3.5 flex items-center justify-between gap-3">
+              <div>
+                <p className="font-semibold text-amber-800 text-sm">
+                  ⏰ Plan expires in {daysLeft} day{daysLeft === 1 ? "" : "s"}
+                </p>
+                <p className="text-xs text-amber-700 mt-0.5">Renew now to keep your meal plan uninterrupted.</p>
+              </div>
+              <Link
+                href={`/restaurants/${restaurant.id}`}
+                className="text-xs bg-amber-600 text-white px-3.5 py-2 rounded-full font-semibold hover:bg-amber-700 transition-colors shrink-0"
+              >
+                Renew →
+              </Link>
+            </div>
+          )}
+
           {/* Token wallet card */}
-          <div className="relative rounded-[var(--radius-card)] overflow-hidden text-white"
-            style={{ background: "linear-gradient(135deg, #e23744 0%, #fc8019 100%)" }}>
+          <div
+            className="relative rounded-[var(--radius-card)] overflow-hidden text-white"
+            style={{ background: "linear-gradient(135deg, #e23744 0%, #fc8019 100%)" }}
+          >
             <div className="absolute -top-8 -right-8 w-40 h-40 bg-white/10 rounded-full" />
             <div className="absolute -bottom-12 -left-8 w-48 h-48 bg-white/10 rounded-full" />
 
@@ -158,7 +194,9 @@ export default async function StudentDashboard() {
                 </div>
                 <div className="text-right">
                   <p className="text-white/60 text-xs">Slots</p>
-                  <p className="font-bold text-sm">{slots.map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(" + ")}</p>
+                  <p className="font-bold text-sm">
+                    {slots.map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(" + ")}
+                  </p>
                 </div>
               </div>
             </div>
@@ -179,13 +217,20 @@ export default async function StudentDashboard() {
           <div className="bg-white rounded-[var(--radius-card)] card-shadow px-5 py-4 flex flex-wrap gap-4 text-sm items-center justify-between">
             <div>
               <p className="text-xs text-[var(--color-text-muted)]">Plan period</p>
-              <p className="font-semibold text-[var(--color-text-primary)]">{subscription.start_date} → {subscription.end_date}</p>
+              <p className="font-semibold text-[var(--color-text-primary)]">
+                {subscription.start_date} → {subscription.end_date}
+              </p>
             </div>
             <div>
               <p className="text-xs text-[var(--color-text-muted)]">Amount paid</p>
-              <p className="font-semibold text-[var(--color-text-primary)]">₹{Number(subscription.price_paid).toLocaleString()}</p>
+              <p className="font-semibold text-[var(--color-text-primary)]">
+                ₹{Number(subscription.price_paid).toLocaleString()}
+              </p>
             </div>
-            <Link href={`/restaurants/${restaurant.id}`} className="text-xs font-semibold text-[var(--color-brand-secondary)] hover:underline">
+            <Link
+              href={`/restaurants/${restaurant.id}`}
+              className="text-xs font-semibold text-[var(--color-brand-secondary)] hover:underline"
+            >
               View mess →
             </Link>
           </div>
@@ -198,25 +243,25 @@ export default async function StudentDashboard() {
                 const dayIdx = (today + offset) % 7;
                 const isToday = offset === 0;
                 return (
-                  <div key={offset}
+                  <div
+                    key={offset}
                     className={`shrink-0 snap-start w-[calc(50vw-1.5rem)] sm:w-48 rounded-[var(--radius-card)] border overflow-hidden transition-all ${
                       isToday
                         ? "border-[var(--color-brand-primary)] card-shadow"
                         : "border-[var(--color-border)] card-shadow-sm"
-                    }`}>
-                    <div className={`px-3 py-2 text-xs font-bold flex items-center justify-between ${
-                      isToday ? "bg-[var(--color-brand-primary)] text-white" : "bg-white text-[var(--color-text-muted)]"
-                    }`}>
+                    }`}
+                  >
+                    <div
+                      className={`px-3 py-2 text-xs font-bold flex items-center justify-between ${
+                        isToday ? "bg-[var(--color-brand-primary)] text-white" : "bg-white text-[var(--color-text-muted)]"
+                      }`}
+                    >
                       <span>{DAYS[dayIdx]}</span>
                       {isToday && <span className="bg-white/20 rounded-full px-2 py-0.5 text-[10px]">Today</span>}
                     </div>
                     <div className={`px-3 py-2.5 space-y-2 ${isToday ? "bg-orange-50" : "bg-white"}`}>
-                      {slots.includes("lunch") && (
-                        <MenuChip label="L" dish={weekMenu[dayIdx]?.lunch} />
-                      )}
-                      {slots.includes("dinner") && (
-                        <MenuChip label="D" dish={weekMenu[dayIdx]?.dinner} />
-                      )}
+                      {slots.includes("lunch")  && <MenuChip label="L" dish={weekMenu[dayIdx]?.lunch} />}
+                      {slots.includes("dinner") && <MenuChip label="D" dish={weekMenu[dayIdx]?.dinner} />}
                       {slots.length === 0 && <p className="text-xs text-[var(--color-text-muted)]">—</p>}
                     </div>
                   </div>
@@ -225,7 +270,40 @@ export default async function StudentDashboard() {
             </div>
           </div>
         </>
+      ) : expiredSub && expiredRestaurant ? (
+        /* ── Expired subscription → show renew flow ──────────────────── */
+        <div className="space-y-4">
+          <div className="rounded-[var(--radius-card)] bg-amber-50 border border-amber-200 px-5 py-4">
+            <p className="font-bold text-amber-800">Your plan has expired</p>
+            <p className="text-sm text-amber-700 mt-0.5">
+              {expiredRestaurant.name} · ended {expiredSub.end_date as string}
+            </p>
+            {Number(expiredSub.rollover_in ?? 0) > 0 && (
+              <p className="text-xs text-green-800 bg-green-100 rounded-lg px-3 py-1.5 mt-2 inline-block font-medium">
+                🎁 You have {expiredSub.rollover_in} rollover token{Number(expiredSub.rollover_in) > 1 ? "s" : ""} ready to apply
+              </p>
+            )}
+          </div>
+
+          <RenewPanel
+            restaurantId={expiredRestaurant.id}
+            restaurantName={expiredRestaurant.name}
+            basePrice={expiredRestaurant.base_price}
+            servesLunch={expiredRestaurant.serves_lunch}
+            servesDinner={expiredRestaurant.serves_dinner}
+            previousSubId={expiredSub.id as string}
+            rolloverTokens={Number(expiredSub.rollover_in ?? 0)}
+          />
+
+          <p className="text-xs text-center text-[var(--color-text-muted)]">
+            Want a different mess?{" "}
+            <Link href="/" className="text-[var(--color-brand-secondary)] font-medium hover:underline">
+              Browse all messes →
+            </Link>
+          </p>
+        </div>
       ) : (
+        /* ── No subscription at all → browse CTA ─────────────────────── */
         <div>
           <div className="bg-white rounded-[var(--radius-card)] card-shadow overflow-hidden">
             <div className="relative h-32 bg-gradient-to-r from-red-50 to-orange-50">
@@ -260,10 +338,15 @@ function MenuChip({ label, dish }: { label: string; dish?: Dish | null }) {
       <span className="text-[10px] font-bold text-[var(--color-text-muted)] w-4 shrink-0">{label}</span>
       {dish ? (
         <>
-          <span className={`diet-dot shrink-0 ${
-            dish.diet_type === "veg" ? "diet-dot-veg" : dish.diet_type === "nonveg" ? "diet-dot-nonveg" : "diet-dot-mix"
-          }`} style={{ width: 8, height: 8 }} />
-          <span className="text-xs font-medium text-[var(--color-text-primary)] truncate leading-tight">{dish.name}</span>
+          <span
+            className={`diet-dot shrink-0 ${
+              dish.diet_type === "veg" ? "diet-dot-veg" : dish.diet_type === "nonveg" ? "diet-dot-nonveg" : "diet-dot-mix"
+            }`}
+            style={{ width: 8, height: 8 }}
+          />
+          <span className="text-xs font-medium text-[var(--color-text-primary)] truncate leading-tight">
+            {dish.name}
+          </span>
         </>
       ) : (
         <span className="text-xs text-[var(--color-text-muted)]">—</span>
