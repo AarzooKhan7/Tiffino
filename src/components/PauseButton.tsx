@@ -69,7 +69,7 @@ export default function PauseButton({ subscriptionId, isPaused, pauseEndsAt }: P
         <div className="bg-white rounded-[var(--radius-card)] card-shadow px-5 py-4 space-y-3">
           <div>
             <p className="font-semibold text-sm text-[var(--color-text-primary)]">Pause your subscription</p>
-            <p className="text-xs text-[var(--color-text-muted)] mt-0.5">No tokens consumed while paused. Maximum 14 days.</p>
+            <p className="text-xs text-[var(--color-text-muted)] mt-0.5">No tokens consumed while paused. Maximum 10 days.</p>
           </div>
           <div className="flex items-center gap-3">
             <label className="text-sm text-[var(--color-text-secondary)] shrink-0">Pause for</label>
@@ -78,7 +78,7 @@ export default function PauseButton({ subscriptionId, isPaused, pauseEndsAt }: P
               onChange={(e) => setDays(Number(e.target.value))}
               className="input-base flex-1 py-2"
             >
-              {[1,2,3,4,5,6,7,10,14].map((d) => (
+              {[1,2,3,4,5,6,7,10].map((d) => (
                 <option key={d} value={d}>{d} day{d > 1 ? "s" : ""}</option>
               ))}
             </select>

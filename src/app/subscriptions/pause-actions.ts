@@ -8,7 +8,7 @@ export async function pauseSubscription(
   days: number,
 ): Promise<{ ok: boolean; error?: string; pauseEndsAt?: string }> {
   try {
-    if (days < 1 || days > 14) return { ok: false, error: "Pause duration must be 1–14 days" };
+    if (days < 1 || days > 10) return { ok: false, error: "Pause duration must be 1–10 days" };
 
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
