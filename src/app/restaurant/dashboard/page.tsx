@@ -11,14 +11,14 @@ export const dynamic = "force-dynamic";
 
 const DAY_NAMES = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 
-interface DishInfo { name: string; diet_type: string }
+interface DishInfo { id?: string; name: string; diet_type: string }
 
 function extractDish(raw: unknown): DishInfo | null {
   if (!raw) return null;
   const d = Array.isArray(raw) ? raw[0] : raw;
   if (!d || typeof d !== "object") return null;
   const obj = d as Record<string, unknown>;
-  return { name: String(obj.name ?? ""), diet_type: String(obj.diet_type ?? "") };
+  return { id: String(obj.id ?? ""), name: String(obj.name ?? ""), diet_type: String(obj.diet_type ?? "") };
 }
 
 export default async function RestaurantDashboard() {
@@ -53,7 +53,7 @@ export default async function RestaurantDashboard() {
     restaurant
       ? supabase
           .from("weekly_menu")
-          .select("meal_type, dish:dish_id(name, diet_type)")
+          .select("meal_type, dish:dish_id(id, name, diet_type)")
           .eq("restaurant_id", restaurant.id)
           .eq("day_of_week", todayIdx)
       : Promise.resolve({ data: null }),
