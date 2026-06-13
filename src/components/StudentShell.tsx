@@ -5,10 +5,11 @@ import BottomNav from "./BottomNav";
 
 interface Props {
   userName: string | null;
+  unreadCount?: number;
   children: React.ReactNode;
 }
 
-export default function StudentShell({ userName, children }: Props) {
+export default function StudentShell({ userName, unreadCount = 0, children }: Props) {
   return (
     <div className="min-h-screen bg-[var(--color-surface-alt)]">
       {/* Sticky header */}
@@ -17,13 +18,30 @@ export default function StudentShell({ userName, children }: Props) {
           <Link href="/" className="text-xl font-extrabold tracking-tight text-[var(--color-brand-primary)]">
             Tiffino
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {/* Notification bell */}
+            <Link
+              href="/student/notifications"
+              className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-[var(--color-surface-alt)] transition-colors"
+              aria-label="Notifications"
+            >
+              <svg className="w-5 h-5 text-[var(--color-text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+              </svg>
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-[var(--color-brand-primary)] text-white text-[9px] font-bold flex items-center justify-center px-1 leading-none">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </Link>
+
             {/* Desktop sign-out */}
             <form method="POST" action="/auth/logout" className="hidden md:block">
               <button type="submit" className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-brand-primary)] transition-colors font-medium">
                 Sign out
               </button>
             </form>
+
             {/* Avatar */}
             <div className="w-8 h-8 rounded-full bg-[var(--color-brand-primary)] text-white text-sm font-bold flex items-center justify-center uppercase">
               {userName ? userName.charAt(0) : "S"}

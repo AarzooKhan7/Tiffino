@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import StudentShell from "@/components/StudentShell";
 
 export default async function StudentLayout({ children }: { children: React.ReactNode }) {
@@ -15,5 +15,16 @@ export default async function StudentLayout({ children }: { children: React.Reac
 
   if (!profile || profile.role !== "student") redirect("/");
 
-  return <StudentShell userName={profile.name}>{children}</StudentShell>;
+  const service = createServiceClient();
+  const { count: unreadCount } = await service
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("read", false);
+
+  return (
+    <StudentShell userName={profile.name} unreadCount={unreadCount ?? 0}>
+      {children}
+    </StudentShell>
+  );
 }
