@@ -4,10 +4,10 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { randomUUID } from "crypto";
 import QRCode from "qrcode";
 import RestaurantQR from "@/components/RestaurantQR";
+import { nowIST } from "@/lib/ist";
 
-function todayIST(): number {
-  return (new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })).getDay() + 6) % 7;
-}
+// Revalidate every 5 min — QR and menu don't change per-request
+export const revalidate = 300;
 
 const DAY_NAMES = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 
@@ -34,7 +34,7 @@ export default async function RestaurantDashboard() {
 
   if (!profile || profile.role !== "restaurant") redirect("/");
 
-  // Ensure restaurant has a qr_token; generate one if missing
+  // Ensure restaurant has a qr_token; generate one if missing (fallback for old rows)
   let qrToken = restaurant?.qr_token as string | null;
   if (restaurant && !qrToken) {
     qrToken = randomUUID();
@@ -42,25 +42,24 @@ export default async function RestaurantDashboard() {
     await service.from("restaurants").update({ qr_token: qrToken }).eq("id", restaurant.id);
   }
 
-  // Generate QR code as base64 PNG data URL (server-side)
-  let qrDataUrl: string | null = null;
-  if (qrToken) {
-    qrDataUrl = await QRCode.toDataURL(qrToken, {
-      width: 300,
-      margin: 2,
-      color: { dark: "#1a1a1a", light: "#ffffff" },
-    });
-  }
+  // Single IST snapshot for today
+  const todayIdx = (nowIST().getDay() + 6) % 7;
 
-  const today = todayIST();
+  // Parallelise QR generation + menu fetch
+  const [qrDataUrl, { data: todayMenu }] = await Promise.all([
+    qrToken
+      ? QRCode.toDataURL(qrToken, { width: 300, margin: 2, color: { dark: "#1a1a1a", light: "#ffffff" } })
+      : Promise.resolve(null as string | null),
+    restaurant
+      ? supabase
+          .from("weekly_menu")
+          .select("meal_type, dish:dish_id(name, diet_type)")
+          .eq("restaurant_id", restaurant.id)
+          .eq("day_of_week", todayIdx)
+      : Promise.resolve({ data: null }),
+  ]);
 
-  const { data: todayMenu } = restaurant
-    ? await supabase
-        .from("weekly_menu")
-        .select("meal_type, dish:dish_id(name, diet_type)")
-        .eq("restaurant_id", restaurant.id)
-        .eq("day_of_week", today)
-    : { data: null };
+  const today = todayIdx;
 
   const lunchRow   = (todayMenu ?? []).find((r) => r.meal_type === "lunch");
   const dinnerRow  = (todayMenu ?? []).find((r) => r.meal_type === "dinner");

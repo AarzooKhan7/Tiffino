@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { Role } from "@/lib/types";
+import { randomUUID } from "crypto";
 
 type CookieEntry = { name: string; value: string; options: Record<string, unknown> };
 
@@ -108,6 +109,7 @@ export async function POST(request: NextRequest) {
       base_price:    0,
       serves_lunch:  true,
       serves_dinner: true,
+      qr_token:      randomUUID(),
     });
     if (restError) {
       return NextResponse.json({ error: restError.message }, { status: 500 });

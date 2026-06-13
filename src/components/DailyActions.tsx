@@ -19,8 +19,9 @@ interface Props {
   skipStats: SkipStats;
 }
 
-export default function DailyActions({ subscriptionId, slots, todayStatuses, skipStats }: Props) {
+export default function DailyActions({ subscriptionId, slots, todayStatuses, skipStats: initialSkipStats }: Props) {
   const [statuses, setStatuses] = useState<SlotState>(todayStatuses);
+  const [skipStats, setSkipStats] = useState<SkipStats>(initialSkipStats);
   const [scanning, setScanning] = useState<"lunch" | "dinner" | null>(null);
   const [toast, setToast] = useState<{ ok: boolean; msg: string } | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -31,13 +32,15 @@ export default function DailyActions({ subscriptionId, slots, todayStatuses, ski
   }
 
   async function handleScan(slot: "lunch" | "dinner", token: string) {
-    setScanning(null);
+    // Keep scanner open until we know the result — close only on success
     startTransition(async () => {
       const res: ActionResult = await claimMeal(subscriptionId, slot, token);
       if (res.ok) {
+        setScanning(null);
         setStatuses((s) => ({ ...s, [slot]: "taken" as SlotStatus }));
         showToast(true, `${slot.charAt(0).toUpperCase() + slot.slice(1)} scanned — token consumed!`);
       } else {
+        setScanning(null); // close scanner and show error as toast
         showToast(false, res.error ?? "Scan failed");
       }
     });
@@ -48,6 +51,20 @@ export default function DailyActions({ subscriptionId, slots, todayStatuses, ski
       const res: ActionResult = await skipMeal(subscriptionId, slot);
       if (res.ok) {
         setStatuses((s) => ({ ...s, [slot]: "skipped" as SlotStatus }));
+        // Update skip stats locally so bar reflects immediately
+        setSkipStats((prev) => {
+          const FREE = 4;
+          const newLunch  = slot === "lunch"  ? prev.lunchSkips  + 1 : prev.lunchSkips;
+          const newDinner = slot === "dinner" ? prev.dinnerSkips + 1 : prev.dinnerSkips;
+          return {
+            lunchSkips:           newLunch,
+            dinnerSkips:          newDinner,
+            freeLunchRemaining:   Math.max(0, FREE - newLunch),
+            freeDinnerRemaining:  Math.max(0, FREE - newDinner),
+            tokensAtRisk:         Math.max(0, newLunch - FREE) + Math.max(0, newDinner - FREE),
+            projectedRollover:    Math.min(newLunch, FREE) + Math.min(newDinner, FREE),
+          };
+        });
         showToast(true, `${slot.charAt(0).toUpperCase() + slot.slice(1)} skipped.`);
       } else {
         showToast(false, res.error ?? "Skip failed");
@@ -61,7 +78,7 @@ export default function DailyActions({ subscriptionId, slots, todayStatuses, ski
     <div className="space-y-3">
       {/* Toast */}
       {toast && (
-        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all ${
+        <div className={`fixed top-4 left-1/2 z-50 px-4 py-3 rounded-xl shadow-xl text-sm font-semibold toast-enter whitespace-nowrap ${
           toast.ok ? "bg-green-600 text-white" : "bg-red-600 text-white"
         }`}>
           {toast.ok ? "✓ " : "✕ "}{toast.msg}
@@ -121,10 +138,10 @@ function SlotCard({
   const done    = taken || skipped;
 
   return (
-    <div className={`rounded-2xl border-2 p-4 transition-all ${
-      taken   ? "bg-green-50 border-green-200" :
-      skipped ? "bg-gray-50 border-gray-200"   :
-                "bg-white border-[var(--color-border)] hover:border-[var(--color-brand-secondary)]"
+    <div className={`slot-card rounded-2xl border-2 p-4 card-enter ${
+      taken   ? "bg-green-50 border-green-200 shadow-sm" :
+      skipped ? "bg-gray-50 border-gray-200"             :
+                "bg-white border-[var(--color-border)] hover:border-[var(--color-brand-secondary)] hover:shadow-md"
     }`}>
       <div className="flex items-center gap-2 mb-3">
         <span className="text-2xl">{emoji}</span>
@@ -133,7 +150,7 @@ function SlotCard({
           <span className={`ml-auto text-xs font-semibold px-2 py-0.5 rounded-full ${
             taken ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
           }`}>
-            {taken ? "Taken" : "Skipped"}
+            {taken ? "✓ Taken" : "Skipped"}
           </span>
         )}
       </div>
@@ -142,16 +159,22 @@ function SlotCard({
         <div className="flex flex-col gap-2">
           <button onClick={onScan} disabled={isPending}
             className="btn-primary w-full py-2.5 text-xs rounded-xl flex items-center gap-1.5 justify-center">
-            <span>📷</span> Scan QR
+            {isPending ? (
+              <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+            ) : <span>📷</span>}
+            {isPending ? "Verifying…" : "Scan QR"}
           </button>
           <button onClick={onSkip} disabled={isPending}
-            className="w-full py-2 text-xs font-medium rounded-xl border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-alt)] transition-colors">
+            className="w-full py-2 text-xs font-medium rounded-xl border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-alt)] active:scale-[0.98] transition-all">
             Skip {label}
           </button>
         </div>
       ) : (
         <p className="text-xs text-[var(--color-text-muted)]">
-          {taken ? "Meal token consumed" : "No token consumed"}
+          {taken ? "Meal token consumed ✓" : "No token consumed"}
         </p>
       )}
     </div>

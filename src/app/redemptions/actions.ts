@@ -83,11 +83,18 @@ export async function claimMeal(
   });
   if (insertErr) return { ok: false, error: "Failed to record meal: " + insertErr.message };
 
-  // 5 — Decrement tokens_remaining by 1
+  // 5 — Decrement tokens_remaining by 1 using a fresh read to avoid stale-snapshot race
+  const { data: freshSub } = await service
+    .from("subscriptions")
+    .select("tokens_remaining")
+    .eq("id", subscriptionId)
+    .single();
+  const currentTokens = Number(freshSub?.tokens_remaining ?? sub.tokens_remaining);
   const { error: updateErr } = await service
     .from("subscriptions")
-    .update({ tokens_remaining: Number(sub.tokens_remaining) - 1 })
-    .eq("id", subscriptionId);
+    .update({ tokens_remaining: Math.max(0, currentTokens - 1) })
+    .eq("id", subscriptionId)
+    .gt("tokens_remaining", 0); // extra guard: only decrement if still > 0
   if (updateErr) return { ok: false, error: "Token decrement failed: " + updateErr.message };
 
   revalidatePath("/student/dashboard");
@@ -197,13 +204,15 @@ export async function resolveStaleRedemptions(): Promise<{ resolved: number; err
 
   for (const sub of subs) {
     const slots = sub.slots as string[];
-    // Walk each day from start_date to yesterday
+    // Walk from start_date to the earlier of (yesterday, end_date)
     const start = new Date(sub.start_date);
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
+    const endBound = sub.end_date ? new Date(sub.end_date) : yesterday;
+    const walkEnd = endBound < yesterday ? endBound : yesterday;
 
     const cursor = new Date(start);
-    while (cursor <= yesterday) {
+    while (cursor <= walkEnd) {
       const dateStr = cursor.toISOString().slice(0, 10);
       cursor.setDate(cursor.getDate() + 1);
 

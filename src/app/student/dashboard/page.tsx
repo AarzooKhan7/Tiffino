@@ -3,14 +3,19 @@ import { redirect } from "next/navigation";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import DailyActions from "@/components/DailyActions";
 import { getSkipStats } from "@/app/redemptions/actions";
-import { todayISODate } from "@/lib/ist";
+import { nowIST } from "@/lib/ist";
 
 export const dynamic = "force-dynamic";
 
 const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
-function todayIST(): number {
-  return (new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })).getDay() + 6) % 7;
+// Single IST snapshot per render — avoids midnight-straddle inconsistency
+function getISTSnapshot(): { dayIndex: number; dateStr: string } {
+  const n = nowIST();
+  return {
+    dayIndex: (n.getDay() + 6) % 7,     // 0=Mon … 6=Sun
+    dateStr:  n.toISOString().slice(0, 10),
+  };
 }
 
 interface Dish { name: string; diet_type: string }
@@ -44,8 +49,8 @@ export default async function StudentDashboard() {
 
   if (!profile || profile.role !== "student") redirect("/auth/student");
 
-  const today = todayIST();
-  const todayDate = todayISODate();
+  // Single consistent IST snapshot — avoids midnight straddle
+  const { dayIndex: today, dateStr: todayDate } = getISTSnapshot();
   const restaurant = subscription?.restaurant as { id: string; name: string; area: string } | null | undefined;
   const slots = (subscription?.slots as string[] | null) ?? [];
 
@@ -83,10 +88,10 @@ export default async function StudentDashboard() {
     }
   }
 
-  const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const nowISTDate = nowIST();
   const endDateStr = subscription?.end_date as string | null;
   const daysLeft = endDateStr
-    ? Math.max(0, Math.ceil((new Date(endDateStr).getTime() - nowIST.getTime()) / 86400000) + 1)
+    ? Math.max(0, Math.ceil((new Date(endDateStr).getTime() - nowISTDate.getTime()) / 86400000) + 1)
     : 0;
 
   const tokenPct = subscription
@@ -94,7 +99,7 @@ export default async function StudentDashboard() {
     : 0;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 page-fade">
       {/* Greeting */}
       <div>
         <p className="text-sm text-[var(--color-text-muted)]">Good {greeting()},</p>
