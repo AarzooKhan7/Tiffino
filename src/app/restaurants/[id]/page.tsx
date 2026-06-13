@@ -1,10 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import SubscribePanel from "@/components/SubscribePanel";
 import AppHeader from "@/components/AppHeader";
-import { restaurantCover, restaurantRating } from "@/lib/food-images";
+import ReviewForm from "@/components/ReviewForm";
+import { restaurantCover } from "@/lib/food-images";
 
 export const dynamic = "force-dynamic";
 
@@ -27,14 +28,57 @@ export default async function PublicRestaurantPage({ params }: { params: Promise
 
   const [{ data: menuRows }, { data: profile }] = await Promise.all([
     supabase.from("weekly_menu").select("day_of_week, meal_type, dish:dish_id(name, diet_type, description)").eq("restaurant_id", id).order("day_of_week").order("meal_type"),
-    user ? supabase.from("profiles").select("role, name").eq("id", user.id).single() : Promise.resolve({ data: null }),
+    user ? supabase.from("profiles").select("role, name, id").eq("id", user.id).single() : Promise.resolve({ data: null }),
   ]);
 
   const isStudent = profile?.role === "student";
   let hasActiveSub = false;
+  let hasAnySub = false;
+  let myReview: { rating: number; comment: string | null } | null = null;
+
   if (isStudent && user) {
-    const { data: sub } = await supabase.from("subscriptions").select("id").eq("student_id", user.id).eq("restaurant_id", id).eq("status", "active").maybeSingle();
-    hasActiveSub = !!sub;
+    const service = createServiceClient();
+    const [{ data: activeSub }, { data: anySub }, { data: reviewRow }] = await Promise.all([
+      supabase.from("subscriptions").select("id").eq("student_id", user.id).eq("restaurant_id", id).eq("status", "active").maybeSingle(),
+      supabase.from("subscriptions").select("id").eq("student_id", user.id).eq("restaurant_id", id).limit(1).maybeSingle(),
+      // Try to fetch existing review — will fail gracefully if reviews table doesn't exist yet
+      service.from("reviews").select("rating, comment").eq("restaurant_id", id).eq("student_id", user.id).maybeSingle().then(
+        (r) => r,
+        () => ({ data: null })
+      ),
+    ]);
+    hasActiveSub = !!activeSub;
+    hasAnySub    = !!anySub;
+    myReview     = reviewRow ? { rating: Number(reviewRow.rating), comment: reviewRow.comment as string | null } : null;
+  }
+
+  // Fetch reviews with reviewer name — graceful if table missing
+  const service = createServiceClient();
+  let reviews: { id: string; rating: number; comment: string | null; student_name: string; created_at: string }[] = [];
+  let avgRating: number | null = null;
+  try {
+    const { data: reviewRows } = await service
+      .from("reviews")
+      .select("id, rating, comment, created_at, student:student_id(name)")
+      .eq("restaurant_id", id)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    reviews = (reviewRows ?? []).map((r) => {
+      const s = Array.isArray(r.student) ? r.student[0] : r.student;
+      return {
+        id:           r.id as string,
+        rating:       Number(r.rating),
+        comment:      r.comment as string | null,
+        student_name: (s as Record<string, unknown> | null)?.name as string ?? "Student",
+        created_at:   r.created_at as string,
+      };
+    });
+    if (reviews.length > 0) {
+      avgRating = Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) * 10) / 10;
+    }
+  } catch {
+    // reviews table not yet created — silently skip
   }
 
   const today = todayIST();
@@ -46,7 +90,7 @@ export default async function PublicRestaurantPage({ params }: { params: Promise
   }
 
   const cover = restaurantCover(restaurant.id);
-  const rating = restaurantRating(restaurant.id);
+  const displayRating = avgRating ?? null;
 
   return (
     <div className="min-h-screen bg-[var(--color-surface-alt)]">
@@ -71,12 +115,13 @@ export default async function PublicRestaurantPage({ params }: { params: Promise
                 {restaurant.area}{restaurant.address ? ` · ${restaurant.address}` : ""}
               </p>
             </div>
-            <div className="flex items-center gap-1.5 bg-white rounded-full px-3 py-1.5 shadow-sm shrink-0">
-              <svg className="w-3.5 h-3.5 text-green-600 fill-green-600" viewBox="0 0 20 20">
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-              </svg>
-              <span className="text-sm font-bold text-green-700">{rating}</span>
-            </div>
+            {displayRating !== null && (
+              <div className="flex items-center gap-1.5 bg-green-600 rounded-full px-3 py-1.5 shadow-sm shrink-0">
+                <span className="text-white text-xs">★</span>
+                <span className="text-sm font-bold text-white">{displayRating.toFixed(1)}</span>
+                <span className="text-white/70 text-[11px]">({reviews.length})</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -87,13 +132,13 @@ export default async function PublicRestaurantPage({ params }: { params: Promise
           <div>
             {restaurant.serves_lunch && restaurant.serves_dinner ? (
               <>
-                <div className="flex items-baseline gap-1.5">
+                <div className="flex items-baseline gap-1.5 flex-wrap">
                   <span className="text-xl font-extrabold text-[var(--color-brand-secondary)]">
                     ₹{Number(restaurant.lunch_price).toLocaleString()}
                   </span>
                   <span className="text-xs text-[var(--color-text-muted)]">lunch</span>
                   <span className="text-[var(--color-text-muted)]">·</span>
-                  <span className="text-xl font-extrabold text-indigo-600">
+                  <span className="text-xl font-extrabold text-[var(--color-brand-secondary)]">
                     ₹{Number(restaurant.dinner_price).toLocaleString()}
                   </span>
                   <span className="text-xs text-[var(--color-text-muted)]">dinner</span>
@@ -118,6 +163,7 @@ export default async function PublicRestaurantPage({ params }: { params: Promise
           </div>
         </div>
 
+        {/* Subscribe / status */}
         {isStudent && !hasActiveSub && (
           <SubscribePanel
             restaurantId={restaurant.id}
@@ -131,18 +177,18 @@ export default async function PublicRestaurantPage({ params }: { params: Promise
         {isStudent && hasActiveSub && (
           <div className="rounded-[var(--radius-card)] bg-green-50 border border-green-200 px-5 py-4 flex items-center justify-between gap-3">
             <p className="text-green-700 font-semibold text-sm">✅ You&apos;re subscribed to this mess</p>
-            <Link href="/student/dashboard" className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-full font-semibold hover:bg-green-700 transition-colors">
+            <Link href="/student/dashboard" className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-full font-semibold hover:bg-green-700 transition-colors shrink-0">
               View plan →
             </Link>
           </div>
         )}
         {!user && (
-          <div className="bg-white rounded-[var(--radius-card)] card-shadow px-5 py-5 flex flex-col sm:flex-row items-center gap-4">
+          <div className="bg-white rounded-[var(--radius-card)] card-shadow px-5 py-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <div>
               <p className="font-semibold text-[var(--color-text-primary)]">Ready to subscribe?</p>
               <p className="text-sm text-[var(--color-text-muted)]">Sign in as a student to get started.</p>
             </div>
-            <a href="/auth/student" className="btn-primary px-5 py-2.5 whitespace-nowrap shrink-0">Sign in &amp; Subscribe</a>
+            <a href="/auth/student" className="btn-primary px-5 py-2.5 whitespace-nowrap shrink-0 text-sm">Sign in &amp; Subscribe</a>
           </div>
         )}
         {user && !isStudent && (
@@ -177,6 +223,56 @@ export default async function PublicRestaurantPage({ params }: { params: Promise
                   </div>
                 );
               })}
+            </div>
+          )}
+        </div>
+
+        {/* Reviews section */}
+        <div>
+          <h2 className="text-lg font-bold text-[var(--color-text-primary)] mb-3">
+            Reviews{reviews.length > 0 && <span className="text-sm font-normal text-[var(--color-text-muted)] ml-2">({reviews.length})</span>}
+          </h2>
+
+          {/* Write/update review (only for students with a subscription) */}
+          {isStudent && hasAnySub && (
+            <div className="mb-4">
+              <ReviewForm
+                restaurantId={restaurant.id}
+                restaurantName={restaurant.name}
+                existingRating={myReview?.rating}
+                existingComment={myReview?.comment ?? undefined}
+              />
+            </div>
+          )}
+
+          {reviews.length === 0 ? (
+            <div className="bg-white rounded-[var(--radius-card)] card-shadow px-5 py-8 text-center">
+              <div className="text-3xl mb-2">💬</div>
+              <p className="text-sm text-[var(--color-text-muted)]">No reviews yet. Be the first to share your experience!</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {reviews.map((r) => (
+                <div key={r.id} className="bg-white rounded-[var(--radius-card)] card-shadow-sm px-5 py-4">
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-orange-100 to-red-100 flex items-center justify-center text-xs font-bold text-[var(--color-brand-primary)] shrink-0">
+                        {r.student_name.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="text-sm font-semibold text-[var(--color-text-primary)]">{r.student_name}</span>
+                    </div>
+                    <div className="flex items-center gap-0.5">
+                      {[1,2,3,4,5].map((s) => (
+                        <span key={s} className={`text-sm ${r.rating >= s ? "text-yellow-400" : "text-gray-200"}`}>★</span>
+                      ))}
+                    </div>
+                  </div>
+                  {r.comment && <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">{r.comment}</p>}
+                  <p className="text-[11px] text-[var(--color-text-muted)] mt-2">
+                    {new Date(r.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                  </p>
+                </div>
+              ))}
             </div>
           )}
         </div>

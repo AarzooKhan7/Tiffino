@@ -248,6 +248,25 @@ export default async function RestaurantDashboard() {
             </div>
           </div>
 
+          {/* ── Weekly summary ── */}
+          <div className="bg-white rounded-[var(--radius-card)] card-shadow px-5 py-4">
+            <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wide mb-3">This week&apos;s summary</p>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="bg-green-50 rounded-xl px-2 py-3">
+                <p className="text-xl font-extrabold text-green-700">{weeklyByDay.reduce((a, b) => a + b, 0)}</p>
+                <p className="text-[10px] text-green-600 font-semibold mt-0.5">Meals served</p>
+              </div>
+              <div className="bg-red-50 rounded-xl px-2 py-3">
+                <p className="text-xl font-extrabold text-red-500">{monthSkipped}</p>
+                <p className="text-[10px] text-red-400 font-semibold mt-0.5">Month skips</p>
+              </div>
+              <div className="bg-orange-50 rounded-xl px-2 py-3">
+                <p className="text-xl font-extrabold text-[var(--color-brand-secondary)]">₹{fmt(totalRevenue)}</p>
+                <p className="text-[10px] text-orange-600 font-semibold mt-0.5">Revenue</p>
+              </div>
+            </div>
+          </div>
+
           {/* ── Today's kitchen demand ── */}
           <div className="bg-white rounded-[var(--radius-card)] card-shadow px-5 py-4">
             <div className="flex items-center justify-between mb-3">

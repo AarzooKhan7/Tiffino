@@ -45,6 +45,22 @@ export async function claimMeal(
   if (!(sub.slots as string[]).includes(slot)) return { ok: false, error: `Not subscribed to ${slot}` };
   if (Number(sub.tokens_remaining) <= 0) return { ok: false, error: "No tokens remaining" };
 
+  // Check if paused (graceful — column may not exist yet)
+  try {
+    const { data: subFull } = await supabase
+      .from("subscriptions")
+      .select("paused_at, pause_ends_at")
+      .eq("id", subscriptionId)
+      .single();
+    if (subFull?.paused_at) {
+      const pauseEnds = subFull.pause_ends_at ? new Date(subFull.pause_ends_at as string) : null;
+      if (!pauseEnds || pauseEnds > nowIST()) {
+        const endsLabel = pauseEnds ? pauseEnds.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "soon";
+        return { ok: false, error: `Subscription is paused until ${endsLabel}` };
+      }
+    }
+  } catch { /* pause columns not yet added — skip check */ }
+
   // 1b — Enforce scan time window (IST server time)
   {
     const now = nowIST();

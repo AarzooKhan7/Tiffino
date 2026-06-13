@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import DailyActions from "@/components/DailyActions";
 import RenewPanel from "@/components/RenewPanel";
+import PauseButton from "@/components/PauseButton";
 import { getSkipStats } from "@/app/redemptions/actions";
 import { nowIST, todayISODate, currentMonthBounds } from "@/lib/ist";
 
@@ -77,7 +78,7 @@ export default async function StudentDashboard() {
     supabase.from("profiles").select("name, location, diet_pref, role").eq("id", user.id).single(),
     supabase
       .from("subscriptions")
-      .select("id, status, slots, tokens_total, tokens_remaining, start_date, end_date, price_paid, restaurant:restaurant_id(id, name, area)")
+      .select("id, status, slots, tokens_total, tokens_remaining, start_date, end_date, price_paid, paused_at, pause_ends_at, restaurant:restaurant_id(id, name, area)")
       .eq("student_id", user.id)
       .eq("status", "active")
       .order("created_at", { ascending: false })
@@ -105,17 +106,23 @@ export default async function StudentDashboard() {
   let skipStats = { lunchSkips: 0, dinnerSkips: 0, freeLunchRemaining: 4, freeDinnerRemaining: 4, tokensAtRisk: 0, projectedRollover: 0 };
   let streak = 0;
   let monthTaken = 0, monthTotal = 0;
+  let weekTaken = 0, weekSkipped = 0, weekTotal = 0;
 
   if (subscription?.id && restaurant?.id) {
     const service = createServiceClient();
     const { start: monthStart } = currentMonthBounds();
 
-    const [{ data: todayRedemptions }, { data: menuRows }, stats, { data: allRedemptions }, { data: monthRedemptions }] = await Promise.all([
+    // Week start = 7 days ago
+    const weekStart = new Date(now); weekStart.setDate(weekStart.getDate() - 6);
+    const weekStartStr = weekStart.toISOString().slice(0, 10);
+
+    const [{ data: todayRedemptions }, { data: menuRows }, stats, { data: allRedemptions }, { data: monthRedemptions }, { data: weekRedemptions }] = await Promise.all([
       service.from("redemptions").select("meal_type, status").eq("subscription_id", subscription.id).eq("meal_date", todayDate),
       supabase.from("weekly_menu").select("day_of_week, meal_type, dish:dish_id(name, diet_type)").eq("restaurant_id", restaurant.id),
       getSkipStats(subscription.id),
       service.from("redemptions").select("meal_date, status").eq("subscription_id", subscription.id).eq("status", "taken").order("meal_date", { ascending: false }).limit(60),
       service.from("redemptions").select("status").eq("subscription_id", subscription.id).gte("meal_date", monthStart).lte("meal_date", todayDate),
+      service.from("redemptions").select("status").eq("subscription_id", subscription.id).gte("meal_date", weekStartStr).lte("meal_date", todayDate),
     ]);
 
     skipStats = stats;
@@ -135,6 +142,12 @@ export default async function StudentDashboard() {
     for (const r of monthRedemptions ?? []) {
       monthTotal++;
       if (r.status === "taken") monthTaken++;
+    }
+
+    for (const r of weekRedemptions ?? []) {
+      weekTotal++;
+      if (r.status === "taken")   weekTaken++;
+      if (r.status === "skipped") weekSkipped++;
     }
   }
 
@@ -308,6 +321,39 @@ export default async function StudentDashboard() {
               </p>
             </div>
           </div>
+
+          {/* ── Pause subscription ── */}
+          <PauseButton
+            subscriptionId={subscription.id}
+            isPaused={!!(subscription.paused_at)}
+            pauseEndsAt={subscription.pause_ends_at ? new Date(subscription.pause_ends_at as string).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : null}
+          />
+
+          {/* ── Weekly summary ── */}
+          {weekTotal > 0 && (
+            <div className="bg-white rounded-[var(--radius-card)] card-shadow px-5 py-4">
+              <h2 className="text-sm font-bold text-[var(--color-text-secondary)] uppercase tracking-wide mb-3">This week&apos;s summary</h2>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="bg-green-50 rounded-xl px-2 py-3">
+                  <p className="text-xl font-extrabold text-green-700">{weekTaken}</p>
+                  <p className="text-[10px] text-green-600 font-semibold mt-0.5">Meals eaten</p>
+                </div>
+                <div className="bg-red-50 rounded-xl px-2 py-3">
+                  <p className="text-xl font-extrabold text-red-500">{weekSkipped}</p>
+                  <p className="text-[10px] text-red-400 font-semibold mt-0.5">Skipped</p>
+                </div>
+                <div className="bg-[var(--color-surface-alt)] rounded-xl px-2 py-3">
+                  <p className="text-xl font-extrabold text-[var(--color-text-primary)]">{weekTotal - weekTaken - weekSkipped}</p>
+                  <p className="text-[10px] text-[var(--color-text-muted)] font-semibold mt-0.5">Pending</p>
+                </div>
+              </div>
+              {weekSkipped > 0 && (
+                <p className="text-xs text-[var(--color-text-muted)] mt-3 text-center">
+                  🎁 {weekSkipped} skip{weekSkipped > 1 ? "s" : ""} this week → tokens roll over at month end
+                </p>
+              )}
+            </div>
+          )}
 
           {/* ── This week's menu ── */}
           <div>
